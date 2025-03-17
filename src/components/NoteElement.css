@@ -1,0 +1,24 @@
+.note-element {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: transform 0.1s ease-out;
+}
+
+.note-element.active {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  z-index: 6;
+}
+
+.fret-number {
+  color: #000;
+  font-weight: bold;
+  font-size: 14px;
+} 

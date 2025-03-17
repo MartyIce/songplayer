@@ -1,0 +1,44 @@
+.tablature-player {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.tablature-display {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.trigger-line {
+  position: absolute;
+  left: 100px;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background-color: #ff5555;
+  z-index: 10;
+}
+
+.strings-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.notes-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+} 

@@ -1,0 +1,17 @@
+.guitar-string {
+  width: 100%;
+  background-color: #d3d3d3;
+  position: relative;
+  margin: 15px 0;
+}
+
+.string-label {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 5;
+} 
