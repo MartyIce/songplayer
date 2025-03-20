@@ -1,0 +1,94 @@
+/* VexStaffDisplay Styles */
+.vex-staff-display {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Basic container styles */
+#vf-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Make sure VexFlow elements are visible */
+#vf-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Default styling for all elements - white/light color */
+#vf-container svg path,
+#vf-container svg rect,
+#vf-container svg circle,
+#vf-container svg text {
+  stroke: rgba(255, 255, 255, 0.8);
+  fill: rgba(255, 255, 255, 0.8);
+}
+
+/* Only target notes that are explicitly marked as active */
+#vf-container svg .vf-stavenote[data-active="true"] path,
+#vf-container svg .vf-stavenote[data-active="true"] text,
+#vf-container svg .vf-notehead[data-active="true"] text {
+  fill: blue !important;
+  stroke: blue !important;
+}
+
+.vex-staff-display > div {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Active note styles - more specific selectors */
+#vf-container svg g.note.active-note .vf-notehead {
+  fill: #ff5555 !important;
+  stroke: #ff5555 !important;
+}
+
+/* Only target specific elements for active notes */
+.active-note {
+  fill: #ff5555 !important;
+  stroke: #ff5555 !important;
+}
+
+.active-notehead {
+  fill: #ff0000 !important;
+  stroke: #ff0000 !important;
+}
+
+/* Add this to create a flashing effect for active notes */
+@keyframes flash {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+/* Restrict animation to just active note elements */
+#vf-container svg g.note.active-note {
+  animation: flash 0.5s infinite;
+}
+
+/* Custom highlight class for active notes */
+.highlighted-note path {
+  fill: #FF0000 !important;
+  stroke: #FF0000 !important;
+}
+
+/* Override the default text color for active note texts - with highest specificity */
+#vf-container svg text.vf-text,
+#vf-container svg .vf-notehead text,
+#vf-container svg .vf-stavenote text {
+  fill: inherit !important;  /* Use the parent's fill color */
+}
+
+/* Force blue text in active notes with extremely high specificity */
+#vf-container svg .vf-notehead[shadowColor="blue"] text,
+#vf-container svg .vf-stavenote[fill="blue"] text,
+#vf-container svg .vf-stavenote[stroke="blue"] text {
+  fill: blue !important;
+  stroke: none !important;
+} 

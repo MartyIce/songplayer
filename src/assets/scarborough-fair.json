@@ -1,0 +1,103 @@
+{
+  "title": "Scarborough Fair",
+  "artist": "Traditional Folk Song",
+  "bpm": 70,
+  "timeSignature": [3, 4],
+  "notes": [
+    { "string": 1, "fret": 0, "time": 0.0, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 0.0, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 0.0, "duration": 0.85, "color": "#bebada" },
+    
+    { "string": 1, "fret": 3, "time": 0.85, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 0.85, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 0.85, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 5, "time": 1.7, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 1.7, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 1.7, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 7, "time": 2.55, "duration": 1.7, "color": "#8dd3c7" },
+    { "string": 2, "fret": 8, "time": 2.55, "duration": 1.7, "color": "#ffffb3" },
+    { "string": 6, "fret": 0, "time": 2.55, "duration": 1.7, "color": "#fdb462" },
+    
+    { "string": 1, "fret": 5, "time": 4.25, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 4.25, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 4.25, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 3, "time": 5.1, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 5.1, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 5.1, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 0, "time": 5.95, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 5.95, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 5.95, "duration": 0.85, "color": "#bebada" },
+    
+    { "string": 1, "fret": 3, "time": 6.8, "duration": 1.7, "color": "#8dd3c7" },
+    { "string": 2, "fret": 3, "time": 6.8, "duration": 1.7, "color": "#ffffb3" },
+    { "string": 5, "fret": 0, "time": 6.8, "duration": 1.7, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 0, "time": 8.5, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 8.5, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 8.5, "duration": 0.85, "color": "#bebada" },
+    
+    { "string": 1, "fret": 3, "time": 9.35, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 9.35, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 9.35, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 5, "time": 10.2, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 10.2, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 10.2, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 7, "time": 11.05, "duration": 1.7, "color": "#8dd3c7" },
+    { "string": 2, "fret": 8, "time": 11.05, "duration": 1.7, "color": "#ffffb3" },
+    { "string": 6, "fret": 0, "time": 11.05, "duration": 1.7, "color": "#fdb462" },
+    
+    { "string": 1, "fret": 8, "time": 12.75, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 8, "time": 12.75, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 5, "fret": 0, "time": 12.75, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 7, "time": 13.6, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 7, "time": 13.6, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 0, "time": 13.6, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 5, "time": 14.45, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 14.45, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 14.45, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 3, "time": 15.3, "duration": 1.7, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 15.3, "duration": 1.7, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 15.3, "duration": 1.7, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 0, "time": 17.0, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 17.0, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 17.0, "duration": 0.85, "color": "#bebada" },
+    
+    { "string": 1, "fret": 3, "time": 17.85, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 17.85, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 17.85, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 5, "time": 18.7, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 18.7, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 18.7, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 7, "time": 19.55, "duration": 1.7, "color": "#8dd3c7" },
+    { "string": 2, "fret": 8, "time": 19.55, "duration": 1.7, "color": "#ffffb3" },
+    { "string": 6, "fret": 0, "time": 19.55, "duration": 1.7, "color": "#fdb462" },
+    
+    { "string": 1, "fret": 5, "time": 21.25, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 3, "fret": 2, "time": 21.25, "duration": 0.85, "color": "#bebada" },
+    { "string": 5, "fret": 3, "time": 21.25, "duration": 0.85, "color": "#80b1d3" },
+    
+    { "string": 1, "fret": 3, "time": 22.1, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 22.1, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 4, "fret": 0, "time": 22.1, "duration": 0.85, "color": "#fb8072" },
+    
+    { "string": 1, "fret": 0, "time": 22.95, "duration": 0.85, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 22.95, "duration": 0.85, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 22.95, "duration": 0.85, "color": "#bebada" },
+    
+    { "string": 1, "fret": 0, "time": 23.8, "duration": 2.55, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 23.8, "duration": 2.55, "color": "#ffffb3" },
+    { "string": 5, "fret": 3, "time": 23.8, "duration": 2.55, "color": "#80b1d3" }
+  ]
+} 

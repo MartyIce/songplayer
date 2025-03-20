@@ -1,0 +1,49 @@
+{
+  "title": "When The Swallows",
+  "artist": "Classical Guitar Arrangement",
+  "bpm": 80,
+  "timeSignature": [3, 4],
+  "notes": [
+    { "string": 1, "fret": 0, "time": 0, "duration": 1.0, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 1.0, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 3, "fret": 0, "time": 1.5, "duration": 0.5, "color": "#bebada" },
+    { "string": 2, "fret": 1, "time": 2.0, "duration": 1.0, "color": "#ffffb3" },
+    
+    { "string": 1, "fret": 0, "time": 3.0, "duration": 1.0, "color": "#8dd3c7" },
+    { "string": 2, "fret": 1, "time": 4.0, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 3, "fret": 0, "time": 4.5, "duration": 0.5, "color": "#bebada" },
+    { "string": 2, "fret": 1, "time": 5.0, "duration": 1.0, "color": "#ffffb3" },
+    
+    { "string": 1, "fret": 3, "time": 6.0, "duration": 1.0, "color": "#8dd3c7" },
+    { "string": 2, "fret": 0, "time": 7.0, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 3, "fret": 2, "time": 7.5, "duration": 0.5, "color": "#bebada" },
+    { "string": 2, "fret": 0, "time": 8.0, "duration": 1.0, "color": "#ffffb3" },
+    
+    { "string": 3, "fret": 2, "time": 9.0, "duration": 0.5, "color": "#bebada" },
+    { "string": 4, "fret": 0, "time": 9.5, "duration": 0.5, "color": "#fb8072" },
+    { "string": 3, "fret": 2, "time": 10.0, "duration": 0.5, "color": "#bebada" },
+    { "string": 2, "fret": 3, "time": 10.5, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 1, "fret": 0, "time": 11.0, "duration": 1.0, "color": "#8dd3c7" },
+    
+    { "string": 5, "fret": 3, "time": 12.0, "duration": 0.5, "color": "#80b1d3" },
+    { "string": 4, "fret": 0, "time": 12.5, "duration": 0.5, "color": "#fb8072" },
+    { "string": 3, "fret": 2, "time": 13.0, "duration": 0.5, "color": "#bebada" },
+    { "string": 2, "fret": 3, "time": 13.5, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 1, "fret": 0, "time": 14.0, "duration": 1.0, "color": "#8dd3c7" },
+    
+    { "string": 2, "fret": 1, "time": 15.0, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 3, "fret": 0, "time": 15.5, "duration": 0.5, "color": "#bebada" },
+    { "string": 4, "fret": 2, "time": 16.0, "duration": 0.5, "color": "#fb8072" },
+    { "string": 5, "fret": 0, "time": 16.5, "duration": 0.5, "color": "#80b1d3" },
+    { "string": 6, "fret": 3, "time": 17.0, "duration": 1.0, "color": "#fdb462" },
+    
+    { "string": 6, "fret": 0, "time": 18.0, "duration": 1.5, "color": "#fdb462" },
+    { "string": 5, "fret": 2, "time": 19.5, "duration": 1.5, "color": "#80b1d3" },
+    { "string": 4, "fret": 0, "time": 21.0, "duration": 1.0, "color": "#fb8072" },
+    { "string": 3, "fret": 0, "time": 22.0, "duration": 1.0, "color": "#bebada" },
+    
+    { "string": 2, "fret": 0, "time": 23.0, "duration": 0.5, "color": "#ffffb3" },
+    { "string": 1, "fret": 0, "time": 23.5, "duration": 0.5, "color": "#8dd3c7" },
+    { "string": 1, "fret": 3, "time": 24.0, "duration": 2.0, "color": "#8dd3c7" }
+  ]
+} 

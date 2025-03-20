@@ -8,6 +8,8 @@ interface ControlsProps {
   onStop: () => void;
   speed: number;
   onSpeedChange: (speed: number) => void;
+  currentTime?: number;
+  songDuration?: number;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -16,11 +18,20 @@ const Controls: React.FC<ControlsProps> = ({
   onPause,
   onStop,
   speed,
-  onSpeedChange
+  onSpeedChange,
+  currentTime = 0,
+  songDuration = 0
 }) => {
   const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSpeed = parseFloat(e.target.value);
     onSpeedChange(newSpeed);
+  };
+  
+  // Format time as MM:SS
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
   
   return (
@@ -38,6 +49,13 @@ const Controls: React.FC<ControlsProps> = ({
         <button className="control-btn stop-btn" onClick={onStop}>
           <span className="icon">⏹</span> Stop
         </button>
+      </div>
+      
+      <div className="time-display">
+        <span>{formatTime(currentTime)}</span>
+        {songDuration > 0 && (
+          <span> / {formatTime(songDuration)}</span>
+        )}
       </div>
       
       <div className="speed-control">

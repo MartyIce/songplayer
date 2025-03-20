@@ -1,0 +1,32 @@
+{
+  "title": "Study No. 1",
+  "artist": "Mauro Giuliani",
+  "bpm": 92,
+  "timeSignature": [3, 4],
+  "tuning": ["E2", "A2", "D3", "G3", "B3", "E4"],
+  "notes": [
+    { "note": "E4", "time": 0.0, "duration": 2.0, "color": "#8dd3c7" },
+    { "note": "C4", "time": 0.0, "duration": 2.0, "color": "#ffffb3" },
+    
+    { "note": "E4", "time": 2.0, "duration": 1.0, "color": "#8dd3c7" },
+    { "note": "C4", "time": 2.0, "duration": 1.0, "color": "#ffffb3" },
+
+    { "note": "G4", "time": 3.0, "duration": 2.0, "color": "#8dd3c7" },
+    { "note": "D4", "time": 3.0, "duration": 2.0, "color": "#bebada" },
+    
+    { "note": "G4", "time": 5.0, "duration": 1.0, "color": "#8dd3c7" },
+    { "note": "D4", "time": 5.0, "duration": 1.0, "color": "#bebada" },
+    
+    { "note": "E4", "time": 6.0, "duration": 0.5, "color": "#8dd3c7" },
+    { "note": "C4", "time": 6.0, "duration": 0.5, "color": "#ffffb3" },
+    
+    { "note": "F4", "time": 6.5, "duration": 0.5, "color": "#8dd3c7" },
+    { "note": "D4", "time": 6.5, "duration": 0.5, "color": "#ffffb3" },
+    
+    { "note": "E4", "time": 7.0, "duration": 0.5, "color": "#8dd3c7" },
+    { "note": "C4", "time": 7.0, "duration": 0.5, "color": "#ffffb3" },
+    
+    { "note": "G4", "time": 9.0, "duration": 2.0, "color": "#8dd3c7" },
+    { "note": "D4", "time": 9.0, "duration": 2.0, "color": "#bebada" }
+  ]
+}

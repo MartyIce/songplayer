@@ -50,6 +50,18 @@
   transform: scale(0.98);
 }
 
+.time-display {
+  font-family: monospace;
+  font-size: 18px;
+  color: #ddd;
+  background-color: #1a1a1a;
+  padding: 5px 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  min-width: 100px;
+  text-align: center;
+}
+
 .speed-control {
   display: flex;
   flex-direction: column;

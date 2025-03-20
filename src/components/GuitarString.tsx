@@ -10,6 +10,10 @@ const GuitarString: React.FC<GuitarStringProps> = ({ stringNumber }) => {
   // String 1 is thinnest, String 6 is thickest
   const thickness = 1 + (stringNumber - 1) * 0.5;
   
+  // Standard tuning: E4, B3, G3, D3, A2, E2 (from 1st to 6th string)
+  const tunings = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
+  const tuning = tunings[stringNumber - 1];
+  
   return (
     <div 
       className="guitar-string"
@@ -20,6 +24,7 @@ const GuitarString: React.FC<GuitarStringProps> = ({ stringNumber }) => {
       data-string={stringNumber}
     >
       <div className="string-label">{stringNumber}</div>
+      <div className="string-tuning">{tuning}</div>
     </div>
   );
 };
