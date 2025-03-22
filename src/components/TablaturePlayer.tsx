@@ -144,8 +144,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       noteFrequency = Tone.Frequency(note.note).toFrequency();
     } else {
       // StringFretNote - calculate from string and fret
-      const baseNotes = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];
-      const stringIndex = 6 - note.string; // Convert to 0-based index, reversed
+      const baseNotes = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3']; // Order from high to low (written pitch)
+      const stringIndex = note.string - 1; // Convert to 0-based index
       const baseNote = baseNotes[stringIndex];
       
       // Calculate the actual note based on the fret
@@ -165,7 +165,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     for (let i = 1; i <= 6; i++) {
       // Adjust for the new display height (400px / 6 strings)
       const stringHeight = 66.67;
-      const yPosition = (i - 1) * stringHeight + (stringHeight / 2);
+      // Reverse the position calculation so string 1 is at the bottom
+      const yPosition = (6 - i) * stringHeight + (stringHeight / 2);
       
       gridLines.push(
         <div 
@@ -248,7 +249,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         <div className="trigger-line"></div>
         
         <div className="strings-container">
-          {[1, 2, 3, 4, 5, 6].map(stringNum => (
+          {[6, 5, 4, 3, 2, 1].map(stringNum => (
             <GuitarString key={stringNum} stringNumber={stringNum} />
           ))}
         </div>

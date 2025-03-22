@@ -3,14 +3,14 @@ export interface StringFretNote {
   fret: number;
   time: number;
   duration: number;
-  color: string;
+  color?: string;
 }
 
 export interface PitchNote {
   note: string;
   time: number;
   duration: number;
-  color: string;
+  color?: string;
 }
 
 export type Note = StringFretNote | PitchNote;

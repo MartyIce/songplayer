@@ -5,12 +5,42 @@
   overflow: hidden;
   margin-bottom: 20px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start; /* Align to the left to show beginning */
+  position: relative;
+  background-color: #1a1a1a;
 }
 
-/* Basic container styles */
-#vf-container {
+/* Scrollable container for the staff */
+.staff-scroll-container {
   width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: grab; /* Show a grab cursor to indicate draggability */
+}
+
+.staff-scroll-container:active {
+  cursor: grabbing; /* Change to grabbing cursor when actively dragging */
+}
+
+/* Manual scroll indicator */
+.manual-scroll-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #ffaa55;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 20;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Basic container styles - width now handled dynamically in component */
+#vf-container {
   height: 100%;
 }
 
@@ -40,7 +70,7 @@
 .vex-staff-display > div {
   width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start; /* Changed from center to flex-start */
 }
 
 /* Active note styles - more specific selectors */

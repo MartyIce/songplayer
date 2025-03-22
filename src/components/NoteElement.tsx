@@ -29,6 +29,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
     
     // Calculate vertical position based on string number
     // Each string has a height of approximately 66.67px (400px / 6 strings)
+    // String 1 (high E) at the bottom, String 6 (low E) at the top
     const stringHeight = 66.67;
     const yPosition = (note.string - 1) * stringHeight + (stringHeight / 2);
     
