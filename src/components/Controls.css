@@ -62,6 +62,40 @@
   text-align: center;
 }
 
+.guitar-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.guitar-control label {
+  margin-bottom: 8px;
+  color: #ddd;
+}
+
+.guitar-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+  color: #ddd;
+  border: 1px solid #444;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.guitar-select:hover {
+  border-color: #666;
+}
+
+.guitar-select:focus {
+  outline: none;
+  border-color: #61dafb;
+}
+
 .speed-control {
   display: flex;
   flex-direction: column;

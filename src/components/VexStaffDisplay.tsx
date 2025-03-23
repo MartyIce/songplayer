@@ -353,15 +353,16 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         return {
           x: bbox.x,
           time: groupedNotes[index].time,
-          duration: groupedNotes[index].duration
+          duration: groupedNotes[index].duration,
+          isRest: groupedNotes[index].isRest
         };
       });
       
       // Draw barlines at measure boundaries
       while (currentMeasureTime < lastNoteTime) {
-        // Find the last note before or at this measure boundary
+        // Find the last non-rest note before or at this measure boundary
         const lastNoteInMeasure = notePositions
-          .filter(pos => pos.time + pos.duration <= currentMeasureTime)
+          .filter(pos => !pos.isRest && pos.time + pos.duration <= currentMeasureTime)
           .sort((a, b) => b.x - a.x)[0];
         
         if (lastNoteInMeasure) {

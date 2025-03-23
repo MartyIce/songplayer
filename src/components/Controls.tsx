@@ -1,5 +1,6 @@
 import React from 'react';
 import './Controls.css';
+import { GuitarType } from '../utils/GuitarSampler';
 
 interface ControlsProps {
   isPlaying: boolean;
@@ -10,6 +11,8 @@ interface ControlsProps {
   onSpeedChange: (speed: number) => void;
   currentTime?: number;
   songDuration?: number;
+  guitarType: GuitarType;
+  onGuitarTypeChange: (type: GuitarType) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -20,11 +23,17 @@ const Controls: React.FC<ControlsProps> = ({
   speed,
   onSpeedChange,
   currentTime = 0,
-  songDuration = 0
+  songDuration = 0,
+  guitarType,
+  onGuitarTypeChange
 }) => {
   const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSpeed = parseFloat(e.target.value);
     onSpeedChange(newSpeed);
+  };
+
+  const handleGuitarChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onGuitarTypeChange(e.target.value as GuitarType);
   };
   
   // Format time as MM:SS
@@ -56,6 +65,20 @@ const Controls: React.FC<ControlsProps> = ({
         {songDuration > 0 && (
           <span> / {formatTime(songDuration)}</span>
         )}
+      </div>
+
+      <div className="guitar-control">
+        <label htmlFor="guitar-select">Guitar Type:</label>
+        <select
+          id="guitar-select"
+          value={guitarType}
+          onChange={handleGuitarChange}
+          className="guitar-select"
+        >
+          <option value="acoustic">Acoustic</option>
+          <option value="electric">Electric</option>
+          <option value="nylon">Nylon</option>
+        </select>
       </div>
       
       <div className="speed-control">

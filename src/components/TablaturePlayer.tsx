@@ -7,6 +7,7 @@ import NoteElement from './NoteElement';
 import Controls from './Controls';
 import VexStaffDisplay from './VexStaffDisplay';
 import { convertSongToStringFret } from '../utils/noteConverter';
+import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -28,6 +29,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [speed, setSpeed] = useState<number>(1);
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
+  const [guitarType, setGuitarType] = useState<GuitarType>('acoustic');
   
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
@@ -136,30 +138,37 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     animationRef.current = requestAnimationFrame(animate);
   };
   
-  // Play a note using Tone.js
-  const playNote = (note: Note) => {
-    if (!synth.current) return;
-    
-    let noteFrequency: number;
-    
-    if ('note' in note) {
-      // PitchNote - direct frequency calculation
-      noteFrequency = Tone.Frequency(note.note).toFrequency();
-    } else if ('string' in note) {
-      // StringFretNote - calculate from string and fret
-      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Order from high to low (actual sounding pitch)
-      const stringIndex = note.string - 1; // Convert to 0-based index
-      const baseNote = baseNotes[stringIndex];
-      
-      // Calculate the actual note based on the fret
-      noteFrequency = Tone.Frequency(baseNote).transpose(note.fret).toFrequency();
-    } else {
-      // It's a rest, don't play anything
-      return;
+  // Handle guitar type change
+  const handleGuitarTypeChange = async (type: GuitarType) => {
+    // If currently playing, stop
+    if (isPlaying) {
+      handleStop();
     }
     
-    // To ensure exact note durations without overlap, we'll use the precise duration from the note
-    synth.current.triggerAttackRelease(noteFrequency, note.duration);
+    setGuitarType(type);
+    await guitarSampler.switchGuitar(type);
+  };
+
+  // Play a note using the guitar sampler
+  const playNote = (note: Note) => {
+    if (!guitarSampler.isReady()) return;
+
+    let noteToPlay: string | null = null;
+
+    if ('note' in note) {
+      // PitchNote - direct note name
+      noteToPlay = note.note;
+    } else if ('string' in note) {
+      // StringFretNote - calculate from string and fret
+      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Order from high to low
+      const stringIndex = note.string - 1; // Convert to 0-based index
+      const baseNote = baseNotes[stringIndex];
+      noteToPlay = Tone.Frequency(baseNote).transpose(note.fret).toNote();
+    }
+
+    if (noteToPlay) {
+      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration);
+    }
   };
   
   // Generate grid lines for better visual reference
@@ -238,6 +247,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         onSpeedChange={handleSpeedChange}
         currentTime={currentTime}
         songDuration={songDuration}
+        guitarType={guitarType}
+        onGuitarTypeChange={handleGuitarTypeChange}
       />
       
       <VexStaffDisplay
