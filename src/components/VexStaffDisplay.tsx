@@ -83,13 +83,12 @@ function getVexflowDuration(duration: number): string {
 }
 
 /**
- * Checks if a note is active at the current time
+ * Determines if a note is currently active based on its time and duration
  */
 function isNoteActive(noteTime: number, noteDuration: number, currentTime: number): boolean {
-  return (
-    noteTime - TIMING_TOLERANCE <= currentTime && 
-    currentTime < noteTime + noteDuration + TIMING_TOLERANCE
-  );
+  const TIMING_TOLERANCE = 0.05; // 50ms tolerance
+  return noteTime <= currentTime && 
+         noteTime + noteDuration > currentTime - TIMING_TOLERANCE;
 }
 
 /**
@@ -163,9 +162,6 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
     const keys = group.notes.map(note => {
       const noteName = note.slice(0, -1);
       const octave = parseInt(note.slice(-1));
-      
-      // VexFlow uses scientific notation where C4 is middle C
-      // Our note data already uses the correct octave numbers
       return `${noteName.toLowerCase()}/${octave}`;
     });
     
@@ -178,65 +174,7 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       autoStem: true
     });
     
-    // Apply coloring if note is active
-    if (group.active) {
-      // Apply color to the entire note with strong styling
-      staveNote.setStyle({
-        fillStyle: 'blue',
-        strokeStyle: 'blue'
-      });
-      
-      // Set direct SVG attributes to ensure CSS selectors work
-      try {
-        // Access the base element and set attributes
-        (staveNote as any).setAttribute('fill', 'blue');
-        (staveNote as any).setAttribute('stroke', 'blue');
-        (staveNote as any).setAttribute('data-active', 'true');
-        
-        // Try to access the note's element class
-        if ((staveNote as any).getElem) {
-          const elem = (staveNote as any).getElem();
-          if (elem) {
-            elem.setAttribute('fill', 'blue');
-            elem.setAttribute('stroke', 'blue');
-            elem.setAttribute('data-active', 'true');
-          }
-        }
-      } catch (e) {
-        console.log('Could not set attributes directly:', e);
-      }
-      
-      // Color each notehead in the chord with strong styling
-      for (let i = 0; i < keys.length; i++) {
-        staveNote.setKeyStyle(i, { 
-          shadowBlur: 2, 
-          shadowColor: 'blue', 
-          fillStyle: 'blue',
-          strokeStyle: 'blue'
-        });
-        
-        // Try to access the Vex.Flow.NoteHead directly if possible
-        try {
-          // Different versions of VexFlow have different ways to access noteheads
-          const note = staveNote as any;
-          
-          // Try common methods to access noteheads
-          const notehead = 
-            (note.getKeyProps && note.getKeyProps()[i]?.notehead) || 
-            (note.note_heads && note.note_heads[i]) ||
-            (note.noteHeads && note.noteHeads[i]);
-          
-          if (notehead && notehead.style) {
-            // Apply styling directly to the notehead
-            notehead.style.fillStyle = 'blue';
-            notehead.style.strokeStyle = 'blue';
-          }
-        } catch (e) {
-          console.log('Could not directly style notehead:', e);
-        }
-      }
-    }
-    
+    // Remove the active note coloring from here - we'll handle it in the update effect
     return staveNote;
   });
   
@@ -371,7 +309,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
           
           staveNoteElements.forEach((el, index) => {
             const group = groupedNotes[index];
-            if (group && group.active) {
+            if (group && isNoteActive(group.time, group.duration, currentTime)) {
               // Set attributes on the group
               el.setAttribute('fill', 'blue');
               el.setAttribute('stroke', 'blue');
@@ -391,11 +329,34 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
                 notehead.setAttribute('stroke', 'blue');
                 notehead.setAttribute('data-active', 'true');
                 
-                // Get all text elements inside the notehead
                 const textElements = notehead.querySelectorAll('text');
                 textElements.forEach(text => {
                   text.setAttribute('fill', 'blue');
                   text.style.fill = 'blue';
+                });
+              });
+            } else {
+              // Explicitly set inactive notes to white
+              el.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
+              el.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
+              el.removeAttribute('data-active');
+              
+              const paths = el.querySelectorAll('path');
+              paths.forEach(path => {
+                path.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
+                path.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
+              });
+              
+              const noteheads = el.querySelectorAll('.vf-notehead');
+              noteheads.forEach(notehead => {
+                notehead.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
+                notehead.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
+                notehead.removeAttribute('data-active');
+                
+                const textElements = notehead.querySelectorAll('text');
+                textElements.forEach(text => {
+                  text.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
+                  text.style.fill = 'rgba(255, 255, 255, 0.8)';
                 });
               });
             }
@@ -447,7 +408,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         
         staveNoteElements.forEach((el, index) => {
           const group = groupedNotes[index];
-          if (group && group.active) {
+          if (group && isNoteActive(group.time, group.duration, currentTime)) {  // Use isNoteActive here
             // Set attributes on the group
             el.setAttribute('fill', 'blue');
             el.setAttribute('stroke', 'blue');

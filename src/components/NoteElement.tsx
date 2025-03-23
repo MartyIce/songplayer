@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
+import * as Tone from 'tone';
 import { StringFretNote } from '../types/SongTypes';
 import './NoteElement.css';
 
@@ -7,7 +8,29 @@ interface NoteElementProps {
   currentTime: number;
 }
 
+// Standard guitar tuning (written pitch, high to low)
+const TUNING = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3'];
+
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
+  // Initialize synth
+  const synth = useMemo(() => {
+    const s = new Tone.Synth().toDestination();
+    return s;
+  }, []);
+
+  // Calculate note frequency from string and fret
+  const getNoteFrequency = useCallback((stringNum: number, fret: number) => {
+    const baseNote = TUNING[stringNum - 1];
+    return Tone.Frequency(baseNote).transpose(fret).toFrequency();
+  }, []);
+
+  // Handle click to play note
+  const handleClick = useCallback(() => {
+    const frequency = getNoteFrequency(note.string, note.fret);
+    // Play the note for 1 second
+    synth.triggerAttackRelease(frequency, 1);
+  }, [note.string, note.fret, synth, getNoteFrequency]);
+
   // Calculate position and width based on time and duration
   const noteStyle = useMemo(() => {
     // The trigger line is at 50% of the screen width
@@ -38,6 +61,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
       top: `${yPosition}px`,
       width: `${width}px`,
       backgroundColor: note.color || '#61dafb',
+      cursor: 'pointer', // Add pointer cursor to indicate clickability
     };
   }, [note.time, note.duration, note.string, note.color, currentTime]);
   
@@ -59,6 +83,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
     <div 
       className={`note-element ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`}
       style={noteStyle}
+      onClick={handleClick}
     >
       <div className="note-content">
         <span className="fret-number">{note.fret}</span>
