@@ -17,16 +17,19 @@
     { "note": "G4", "time": 5.0, "duration": 1.0 },
     { "note": "D5", "time": 5.0, "duration": 1.0 },
     
-    { "note": "C5", "time": 6.0, "duration": 0.5 },
-    { "note": "E5", "time": 6.0, "duration": 0.5 },
+    { "note": "C5", "time": 6.0, "duration": 1.0 },
+    { "note": "E5", "time": 6.0, "duration": 1.0 },
     
-    { "note": "D5", "time": 6.5, "duration": 0.5 },
-    { "note": "F5", "time": 6.5, "duration": 0.5 },
+    { "note": "D5", "time": 7.0, "duration": 1.0 },
+    { "note": "F5", "time": 7.0, "duration": 1.0 },
     
-    { "note": "C5", "time": 7.0, "duration": 0.5 },
-    { "note": "E5", "time": 7.0, "duration": 0.5 },
+    { "note": "C5", "time": 8.0, "duration": 1.0 },
+    { "note": "E5", "time": 8.0, "duration": 1.0 },
     
     { "note": "G4", "time": 9.0, "duration": 2.0 },
-    { "note": "D5", "time": 9.0, "duration": 2.0 }
+    { "note": "D5", "time": 9.0, "duration": 2.0 },
+
+    { "rest": true, "time": 11.0, "duration": 1.0 },
+    { "rest": true, "time": 11.0, "duration": 1.0 }
   ]
 }

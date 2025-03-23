@@ -109,7 +109,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       // Check if any notes should be played (only when the exact start time is crossed)
       processedSong.notes.forEach((note: Note) => {
         // Generate a unique ID for the note
-        const noteId = `${note.time.toFixed(3)}-${'note' in note ? note.note : `${note.string}-${note.fret}`}`;
+        const noteId = `${note.time.toFixed(3)}-${
+          'note' in note ? note.note : 
+          'string' in note ? `${note.string}-${note.fret}` : 'rest'
+        }`;
         
         // A note should be played if:
         // 1. We haven't played it already
@@ -140,20 +143,22 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     let noteFrequency: number;
     
     if ('note' in note) {
-      // PitchNote - already has the note name
+      // PitchNote - direct frequency calculation
       noteFrequency = Tone.Frequency(note.note).toFrequency();
-    } else {
+    } else if ('string' in note) {
       // StringFretNote - calculate from string and fret
-      const baseNotes = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3']; // Order from high to low (written pitch)
+      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Order from high to low (actual sounding pitch)
       const stringIndex = note.string - 1; // Convert to 0-based index
       const baseNote = baseNotes[stringIndex];
       
       // Calculate the actual note based on the fret
       noteFrequency = Tone.Frequency(baseNote).transpose(note.fret).toFrequency();
+    } else {
+      // It's a rest, don't play anything
+      return;
     }
     
     // To ensure exact note durations without overlap, we'll use the precise duration from the note
-    // This ensures that if one note ends at time 2.0 and another starts at 2.0, they don't overlap
     synth.current.triggerAttackRelease(noteFrequency, note.duration);
   };
   

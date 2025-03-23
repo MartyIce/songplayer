@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Factory, Voice, StaveNote, Formatter, Barline } from 'vexflow';
-import { Note } from '../types/SongTypes';
+import { Note, StringFretNote } from '../types/SongTypes';
 import './VexStaffDisplay.css';
 
 interface VexStaffDisplayProps {
@@ -14,6 +14,8 @@ interface GroupedNote {
   duration: number;
   notes: string[];
   active: boolean;
+  isRest?: boolean;
+  voiceCount?: number;
 }
 
 /*
@@ -50,17 +52,18 @@ const SCROLL_SCALE = 56; // Scaling factor to synchronize with tab view
 const VISIBLE_WIDTH = 1000; // Visible width of the score display
 const STAVE_LEFT_PADDING = 20; // Padding to the left of the stave
 const CLEF_WIDTH = 90; // Width needed for clef and time signature
+const MEASURE_WIDTH = 200; // Width per measure (adjusted for better spacing)
 
 /**
  * Converts string/fret to pitch note
  */
-function getPitchFromTab(stringNum: number, fret: number): string {
-  const baseNote = TUNING[stringNum - 1];
+function getPitchFromTab(note: StringFretNote): string {
+  const baseNote = TUNING[note.string - 1];
   const noteName = baseNote.slice(0, -1);
   const octave = parseInt(baseNote.slice(-1));
   
   // Calculate semitones from base note
-  const semitones = fret;
+  const semitones = note.fret;
   
   // Basic pitch calculation
   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -96,9 +99,28 @@ function isNoteActive(noteTime: number, noteDuration: number, currentTime: numbe
  */
 function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNote[] {
   const groupedNotes: GroupedNote[] = [];
+  const restGroups: { [key: string]: number } = {}; // Track number of rests at each time point
   
+  // First pass: Group regular notes
   visibleNotes.forEach(note => {
-    const pitch = 'note' in note ? note.note : getPitchFromTab(note.string, note.fret);
+    if ('rest' in note) {
+      // Count rests at each time point
+      const timeKey = note.time.toFixed(3);
+      restGroups[timeKey] = (restGroups[timeKey] || 0) + 1;
+      return;
+    }
+
+    let pitch: string = '';
+    if ('note' in note) {
+      pitch = note.note;
+    } else if ('string' in note) {
+      pitch = getPitchFromTab(note);
+    } else {
+      return; // Skip if neither note nor string/fret
+    }
+    
+    if (!pitch) return; // Skip if no valid pitch was determined
+    
     const active = isNoteActive(note.time, note.duration, currentTime);
     
     // Use a smaller epsilon for time comparison to prevent grouping different notes
@@ -123,27 +145,45 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNot
     }
   });
   
+  // Second pass: Add rest groups
+  Object.entries(restGroups).forEach(([timeStr, count]) => {
+    const time = parseFloat(timeStr);
+    const matchingNote = visibleNotes.find(n => Math.abs(n.time - time) < 0.001 && 'rest' in n);
+    if (matchingNote) {
+      groupedNotes.push({
+        time,
+        duration: matchingNote.duration,
+        notes: [],
+        active: false,
+        isRest: true,
+        voiceCount: count // Add the count of simultaneous rests
+      });
+    }
+  });
+  
   // Sort notes within each group by pitch (high to low for proper stave rendering)
   groupedNotes.forEach(group => {
-    group.notes.sort((a, b) => {
-      // Extract note and octave
-      const aNoteName = a.slice(0, -1);
-      const aOctave = parseInt(a.slice(-1));
-      const bNoteName = b.slice(0, -1);
-      const bOctave = parseInt(b.slice(-1));
-      
-      // Compare octaves first (higher octave should be first in VexFlow)
-      if (aOctave !== bOctave) {
-        return bOctave - aOctave; // Higher octave first (descending)
-      }
-      
-      // If octaves are the same, compare notes within the octave
-      const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-      const aIndex = notes.indexOf(aNoteName);
-      const bIndex = notes.indexOf(bNoteName);
-      
-      return bIndex - aIndex; // Higher notes first (descending order)
-    });
+    if (!group.isRest) {
+      group.notes.sort((a, b) => {
+        // Extract note and octave
+        const aNoteName = a.slice(0, -1);
+        const aOctave = parseInt(a.slice(-1));
+        const bNoteName = b.slice(0, -1);
+        const bOctave = parseInt(b.slice(-1));
+        
+        // Compare octaves first (higher octave should be first in VexFlow)
+        if (aOctave !== bOctave) {
+          return bOctave - aOctave; // Higher octave first (descending)
+        }
+        
+        // If octaves are the same, compare notes within the octave
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const aIndex = notes.indexOf(aNoteName);
+        const bIndex = notes.indexOf(bNoteName);
+        
+        return bIndex - aIndex; // Higher notes first (descending order)
+      });
+    }
   });
   
   return groupedNotes;
@@ -153,41 +193,54 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNot
  * Creates VexFlow stave notes from grouped notes
  */
 function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
-  console.log('Converting grouped notes to VexFlow:', groupedNotes);
-  
-  const vexNotes = groupedNotes.map(group => {
-    const duration = getVexflowDuration(group.duration);
-    
+  return groupedNotes.map((group) => {
+    if (!group.notes.length && !group.isRest) {
+      return new StaveNote({
+        keys: ['b/4'],
+        duration: 'wr',
+        autoStem: true
+      });
+    }
+
+    // Handle rests
+    if (group.isRest) {
+      const voiceCount = group.voiceCount || 1;
+      if (voiceCount > 1) {
+        // Create multiple rests stacked vertically
+        const restPositions = ['b/4', 'd/4']; // Different vertical positions for stacked rests
+        return new StaveNote({
+          keys: restPositions.slice(0, voiceCount),
+          duration: 'qr',
+          autoStem: true
+        });
+      } else {
+        // Single rest
+        return new StaveNote({
+          keys: ['b/4'],
+          duration: 'qr',
+          autoStem: true
+        });
+      }
+    }
+
     // Format keys for VexFlow (e.g., "C4" becomes "c/4")
     const keys = group.notes.map(note => {
       const noteName = note.slice(0, -1);
-      const octave = parseInt(note.slice(-1));
+      const octave = note.slice(-1);
       return `${noteName.toLowerCase()}/${octave}`;
     });
     
-    console.log(`Note at time ${group.time}, duration: ${duration}, keys: ${keys.join(', ')}`);
-    
-    // Create the note
+    const duration = getVexflowDuration(group.duration);
+
     const staveNote = new StaveNote({
       keys,
       duration,
       autoStem: true
     });
-    
-    // Remove the active note coloring from here - we'll handle it in the update effect
+
+    // ... existing code for accidentals ...
     return staveNote;
   });
-  
-  // If no notes, add a whole rest
-  if (vexNotes.length === 0) {
-    vexNotes.push(new StaveNote({
-      keys: ['b/4'],
-      duration: 'wr',
-      autoStem: true
-    }));
-  }
-  
-  return vexNotes;
 }
 
 // Function to get X position for a note at a given time
@@ -230,9 +283,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
     const beatsPerMeasure = timeSignature[0];
     const totalMeasures = Math.ceil(lastNoteTime / beatsPerMeasure) + 1; // Add one for safety
     
-    // Use a fixed width per measure
-    const measureWidth = 250; // Fixed width per measure
-    const calculatedWidth = Math.max(1000, totalMeasures * measureWidth);
+    // Use MEASURE_WIDTH constant for consistent measure widths
+    const calculatedWidth = Math.max(VISIBLE_WIDTH, totalMeasures * MEASURE_WIDTH);
     
     setTotalWidth(calculatedWidth);
     setTotalDuration(lastNoteTime);
@@ -248,8 +300,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
     
     const context = factory.getContext();
     const system = factory.System({
-      x: 20, // Left padding
-      width: calculatedWidth - 40, // Full width minus padding
+      x: STAVE_LEFT_PADDING,
+      width: calculatedWidth - (STAVE_LEFT_PADDING * 2),
     });
     
     try {
@@ -260,14 +312,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         .addTimeSignature(`${timeSignature[0]}/${timeSignature[1]}`);
       
       // Set stave width to accommodate all measures
-      stave.setWidth(calculatedWidth - 40);
-      
-      // Add barlines at measure positions
-      for (let i = 1; i < totalMeasures; i++) {
-        const x = i * measureWidth;
-        const barline = new Barline(Barline.type.SINGLE);
-        stave.addModifier(barline, x);
-      }
+      stave.setWidth(calculatedWidth - (STAVE_LEFT_PADDING * 2));
       
       // Group notes by time to handle chords
       const groupedNotes = groupNotesByTime(notes, currentTime);
@@ -288,9 +333,51 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         .joinVoices([voice])
         .formatToStave([voice], stave);
       
-      // Draw the stave and notes
+      // Set begin and end barlines
+      stave.setBegBarType(Barline.type.SINGLE);
+      stave.setEndBarType(Barline.type.END);
+      
+      // Draw the stave
       stave.draw();
+      
+      // Draw the notes
       voice.draw(context, stave);
+
+      // Calculate and draw measure barlines based on note timings
+      let currentMeasureTime = beatsPerMeasure; // First barline after 3 beats
+      let currentX = 0;
+      
+      // Find x-positions for each note
+      const notePositions = vexNotes.map((note, index) => {
+        const bbox = note.getBoundingBox();
+        return {
+          x: bbox.x,
+          time: groupedNotes[index].time,
+          duration: groupedNotes[index].duration
+        };
+      });
+      
+      // Draw barlines at measure boundaries
+      while (currentMeasureTime < lastNoteTime) {
+        // Find the last note before or at this measure boundary
+        const lastNoteInMeasure = notePositions
+          .filter(pos => pos.time + pos.duration <= currentMeasureTime)
+          .sort((a, b) => b.x - a.x)[0];
+        
+        if (lastNoteInMeasure) {
+          // Place barline just after this note
+          const x = lastNoteInMeasure.x + 30; // Add some padding after the note
+          
+          context.beginPath();
+          context.moveTo(x, stave.getYForLine(0));
+          context.lineTo(x, stave.getYForLine(4));
+          context.setStrokeStyle('#FFFFFF');
+          context.setLineWidth(1);
+          context.stroke();
+        }
+        
+        currentMeasureTime += beatsPerMeasure;
+      }
       
       // Color active notes
       if (containerRef.current) {

@@ -17,6 +17,13 @@ interface StringFretNote {
   color?: string;
 }
 
+interface RestNote {
+  time: number;
+  duration: number;
+  rest: boolean;
+  color?: string;
+}
+
 // Parse a note string (e.g., "C#4") into its components
 function parseNote(noteStr: string): { note: string; octave: number } {
   const match = noteStr.match(/^([A-G][#b]?)(\d+)$/);
@@ -124,9 +131,24 @@ console.log('E4:', e4Result);
 console.log('C5:', c5Result);
 
 export function convertNoteToStringFret(
-  noteData: { note: string; time: number; duration: number; color?: string },
+  noteData: { note?: string; time: number; duration: number; color?: string; rest?: boolean },
   tuning: string[]
-): StringFretNote {
+): StringFretNote | RestNote {
+  // If it's a rest note, return it as is
+  if (noteData.rest) {
+    return {
+      time: noteData.time,
+      duration: noteData.duration,
+      rest: true,
+      ...(noteData.color && { color: noteData.color })
+    };
+  }
+
+  // Otherwise convert the pitch note to string/fret
+  if (!noteData.note) {
+    throw new Error('Note data must have either a note or rest property');
+  }
+
   console.log('Converting note:', noteData.note);
   const midiNote = noteToMidi(noteData.note);
   console.log(`Note ${noteData.note} converted to MIDI: ${midiNote}`);

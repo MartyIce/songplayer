@@ -8,8 +8,8 @@ interface NoteElementProps {
   currentTime: number;
 }
 
-// Standard guitar tuning (written pitch, high to low)
-const TUNING = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3'];
+// Standard guitar tuning (actual sounding pitches, high to low)
+const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   // Initialize synth
