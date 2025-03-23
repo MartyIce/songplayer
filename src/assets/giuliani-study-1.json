@@ -36,6 +36,18 @@
     { "note": "F5", "time": 12.0, "duration": 2.0 },
     
     { "note": "B4", "time": 14.0, "duration": 1.0 },
-    { "note": "G5", "time": 14.0, "duration": 1.0 }
+    { "note": "G5", "time": 14.0, "duration": 1.0 },
+
+    { "note": "C5", "time": 15.0, "duration": 2.0 },
+    { "note": "E5", "time": 15.0, "duration": 2.0 },
+    
+    { "note": "A4", "time": 17.0, "duration": 1.0 },
+    { "note": "C5", "time": 17.0, "duration": 1.0 },
+
+    { "note": "F4", "time": 18.0, "duration": 2.0 },
+    { "note": "D5", "time": 18.0, "duration": 2.0 },
+    
+    { "note": "G4", "time": 20.0, "duration": 1.0 },
+    { "note": "B4", "time": 20.0, "duration": 1.0 }
   ]
 }
