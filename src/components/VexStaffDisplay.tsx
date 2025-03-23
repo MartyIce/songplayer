@@ -17,6 +17,7 @@ interface GroupedNote {
   active: boolean;
   isRest?: boolean;
   voiceCount?: number;
+  measure?: number;
 }
 
 /*
@@ -96,18 +97,29 @@ function isNoteActive(noteTime: number, noteDuration: number, currentTime: numbe
 }
 
 /**
+ * Function to get measure number for a given time
+ */
+function getMeasureNumber(time: number, beatsPerMeasure: number): number {
+  return Math.floor(time / beatsPerMeasure);
+}
+
+/**
  * Groups notes that occur at the same time (chords)
  */
-function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNote[] {
+function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignature: [number, number]): GroupedNote[] {
   const groupedNotes: GroupedNote[] = [];
-  const restGroups: { [key: string]: number } = {}; // Track number of rests at each time point
+  const restGroups: { [key: string]: Note[] } = {}; // Track simultaneous rests
+  const beatsPerMeasure = timeSignature[0];
   
-  // First pass: Group regular notes
+  // First pass: Group regular notes and collect rests
   visibleNotes.forEach(note => {
     if ('rest' in note) {
-      // Count rests at each time point
-      const timeKey = note.time.toFixed(3);
-      restGroups[timeKey] = (restGroups[timeKey] || 0) + 1;
+      // Group rests by time, using exact time value to maintain measure position
+      const timeKey = note.time.toString();
+      if (!restGroups[timeKey]) {
+        restGroups[timeKey] = [];
+      }
+      restGroups[timeKey].push(note);
       return;
     }
 
@@ -117,72 +129,79 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNot
     } else if ('string' in note) {
       pitch = getPitchFromTab(note);
     } else {
-      return; // Skip if neither note nor string/fret
+      return;
     }
     
-    if (!pitch) return; // Skip if no valid pitch was determined
+    if (!pitch) return;
     
     const active = isNoteActive(note.time, note.duration, currentTime);
-    
-    // Use a smaller epsilon for time comparison to prevent grouping different notes
     const existingGroup = groupedNotes.find(g => 
-      Math.abs(g.time - note.time) < 0.001 && g.duration === note.duration
+      Math.abs(g.time - note.time) < 0.001 && g.duration === note.duration && !g.isRest
     );
     
     if (existingGroup) {
       existingGroup.notes.push(pitch);
-      
-      // If this note is active, mark the whole group as active
-      if (active) {
-        existingGroup.active = true;
-      }
+      if (active) existingGroup.active = true;
     } else {
       groupedNotes.push({
         time: note.time,
         duration: note.duration,
         notes: [pitch],
-        active
+        active,
+        measure: getMeasureNumber(note.time, beatsPerMeasure)
       });
     }
   });
   
-  // Second pass: Add rest groups
-  Object.entries(restGroups).forEach(([timeStr, count]) => {
+  // Second pass: Add rest groups at their exact positions
+  Object.entries(restGroups).forEach(([timeStr, rests]) => {
     const time = parseFloat(timeStr);
-    const matchingNote = visibleNotes.find(n => Math.abs(n.time - time) < 0.001 && 'rest' in n);
-    if (matchingNote) {
+    if (rests.length > 0) {
       groupedNotes.push({
-        time,
-        duration: matchingNote.duration,
+        time: time,
+        duration: rests[0].duration,
         notes: [],
         active: false,
         isRest: true,
-        voiceCount: count // Add the count of simultaneous rests
+        voiceCount: rests.length,
+        measure: getMeasureNumber(time, beatsPerMeasure)
       });
     }
   });
   
-  // Sort notes within each group by pitch (high to low for proper stave rendering)
+  // Sort all groups by measure and time within measure
+  groupedNotes.sort((a, b) => {
+    const measureDiff = (a.measure || 0) - (b.measure || 0);
+    if (measureDiff !== 0) return measureDiff;
+    
+    const timeDiff = a.time - b.time;
+    if (timeDiff !== 0) return timeDiff;
+    
+    // If times are equal, put rests before notes
+    if (a.isRest && !b.isRest) return -1;
+    if (!a.isRest && b.isRest) return 1;
+    
+    return 0;
+  });
+  
+  // Sort notes within each non-rest group by pitch
   groupedNotes.forEach(group => {
-    if (!group.isRest) {
+    if (!group.isRest && group.notes) {
       group.notes.sort((a, b) => {
-        // Extract note and octave
         const aNoteName = a.slice(0, -1);
         const aOctave = parseInt(a.slice(-1));
         const bNoteName = b.slice(0, -1);
         const bOctave = parseInt(b.slice(-1));
         
-        // Compare octaves first (higher octave should be first in VexFlow)
         if (aOctave !== bOctave) {
-          return bOctave - aOctave; // Higher octave first (descending)
+          return bOctave - aOctave;
         }
         
-        // If octaves are the same, compare notes within the octave
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         const aIndex = notes.indexOf(aNoteName);
         const bIndex = notes.indexOf(bNoteName);
         
-        return bIndex - aIndex; // Higher notes first (descending order)
+        return bIndex - aIndex;
       });
     }
   });
@@ -195,7 +214,18 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number): GroupedNot
  */
 function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
   return groupedNotes.map((group) => {
-    if (!group.notes.length && !group.isRest) {
+    if (group.isRest) {
+      const voiceCount = group.voiceCount || 1;
+      // Create vertically stacked rests for simultaneous rests
+      const restPositions = ['b/4', 'd/4']; // Positions for stacked rests
+      return new StaveNote({
+        keys: restPositions.slice(0, Math.min(voiceCount, 2)), // Limit to 2 stacked rests
+        duration: getVexflowDuration(group.duration) + 'r',
+        autoStem: true
+      });
+    }
+
+    if (!group.notes.length) {
       return new StaveNote({
         keys: ['b/4'],
         duration: 'wr',
@@ -203,28 +233,6 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       });
     }
 
-    // Handle rests
-    if (group.isRest) {
-      const voiceCount = group.voiceCount || 1;
-      if (voiceCount > 1) {
-        // Create multiple rests stacked vertically
-        const restPositions = ['b/4', 'd/4']; // Different vertical positions for stacked rests
-        return new StaveNote({
-          keys: restPositions.slice(0, voiceCount),
-          duration: 'qr',
-          autoStem: true
-        });
-      } else {
-        // Single rest
-        return new StaveNote({
-          keys: ['b/4'],
-          duration: 'qr',
-          autoStem: true
-        });
-      }
-    }
-
-    // Format keys for VexFlow (e.g., "C4" becomes "c/4")
     const keys = group.notes.map(note => {
       const noteName = note.slice(0, -1);
       const octave = note.slice(-1);
@@ -232,15 +240,11 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
     });
     
     const duration = getVexflowDuration(group.duration);
-
-    const staveNote = new StaveNote({
+    return new StaveNote({
       keys,
       duration,
       autoStem: true
     });
-
-    // ... existing code for accidentals ...
-    return staveNote;
   });
 }
 
@@ -268,23 +272,18 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
 
-  // Initial render of the score
   useEffect(() => {
     if (!containerRef.current) return;
     
-    // Clear previous content
     containerRef.current.innerHTML = '';
     
-    // Find the last note to calculate required width
     const lastNoteTime = notes.length > 0 ? 
       Math.max(...notes.map(note => note.time + note.duration)) : 
       0;
     
-    // Calculate how many measures we need to display
     const beatsPerMeasure = timeSignature[0];
-    const totalMeasures = Math.ceil(lastNoteTime / beatsPerMeasure) + 1; // Add one for safety
+    const totalMeasures = Math.ceil(lastNoteTime / beatsPerMeasure);
     
-    // Use MEASURE_WIDTH constant for consistent measure widths
     const calculatedWidth = Math.max(VISIBLE_WIDTH, totalMeasures * MEASURE_WIDTH);
     
     setTotalWidth(calculatedWidth);
@@ -306,22 +305,20 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
     });
     
     try {
-      // Create a single stave for all notes
       const stave = system.addStave({
         voices: []
       }).addClef('treble')
         .addTimeSignature(`${timeSignature[0]}/${timeSignature[1]}`);
       
-      // Set stave width to accommodate all measures
       stave.setWidth(calculatedWidth - (STAVE_LEFT_PADDING * 2));
       
       // Group notes by time to handle chords
-      const groupedNotes = groupNotesByTime(notes, currentTime);
+      const groupedNotes = groupNotesByTime(notes, currentTime, timeSignature);
       
-      // Create VexFlow notes from our grouped notes
+      // Create VexFlow notes
       const vexNotes = createVexflowNotes(groupedNotes);
       
-      // Create a voice with the total number of beats
+      // Create a single voice for all notes
       const voice = new Voice({
         numBeats: beatsPerMeasure * totalMeasures,
         beatValue: timeSignature[1]
@@ -334,49 +331,23 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         .joinVoices([voice])
         .formatToStave([voice], stave);
       
-      // Set begin and end barlines
       stave.setBegBarType(Barline.type.SINGLE);
       stave.setEndBarType(Barline.type.END);
       
-      // Draw the stave
       stave.draw();
-      
-      // Draw the notes
       voice.draw(context, stave);
-
-      // Calculate and draw measure barlines based on note timings
-      let currentMeasureTime = beatsPerMeasure; // First barline after 3 beats
-      let currentX = 0;
       
-      // Find x-positions for each note
-      const notePositions = vexNotes.map((note, index) => {
-        const bbox = note.getBoundingBox();
-        return {
-          x: bbox.x,
-          time: groupedNotes[index].time,
-          duration: groupedNotes[index].duration,
-          isRest: groupedNotes[index].isRest
-        };
-      });
-      
-      // Draw barlines at measure boundaries
+      // Draw measure barlines
+      let currentMeasureTime = beatsPerMeasure;
       while (currentMeasureTime < lastNoteTime) {
-        // Find the last non-rest note before or at this measure boundary
-        const lastNoteInMeasure = notePositions
-          .filter(pos => !pos.isRest && pos.time + pos.duration <= currentMeasureTime)
-          .sort((a, b) => b.x - a.x)[0];
+        const x = getXPositionForTime(currentMeasureTime, calculatedWidth, lastNoteTime);
         
-        if (lastNoteInMeasure) {
-          // Place barline just after this note
-          const x = lastNoteInMeasure.x + 30; // Add some padding after the note
-          
-          context.beginPath();
-          context.moveTo(x, stave.getYForLine(0));
-          context.lineTo(x, stave.getYForLine(4));
-          context.setStrokeStyle('#FFFFFF');
-          context.setLineWidth(1);
-          context.stroke();
-        }
+        context.beginPath();
+        context.moveTo(x, stave.getYForLine(0));
+        context.lineTo(x, stave.getYForLine(4));
+        context.setStrokeStyle('#FFFFFF');
+        context.setLineWidth(1);
+        context.stroke();
         
         currentMeasureTime += beatsPerMeasure;
       }
@@ -385,7 +356,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
       if (containerRef.current) {
         const svg = containerRef.current.querySelector('svg');
         if (svg) {
-          // First, reset all notes to default coloring
+          // Reset all notes to default coloring
           const allNotes = svg.querySelectorAll('.vf-stavenote, .vf-notehead');
           allNotes.forEach(note => {
             note.removeAttribute('data-active');
@@ -393,25 +364,21 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
             note.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
           });
           
-          // Find all StaveNote elements with active notes and modify their paths
+          // Find and color active notes
           const staveNoteElements = svg.querySelectorAll('.vf-stavenote');
-          
           staveNoteElements.forEach((el, index) => {
             const group = groupedNotes[index];
             if (group && isNoteActive(group.time, group.duration, currentTime)) {
-              // Set attributes on the group
               el.setAttribute('fill', 'blue');
               el.setAttribute('stroke', 'blue');
               el.setAttribute('data-active', 'true');
               
-              // Find and color all paths inside this note
               const paths = el.querySelectorAll('path');
               paths.forEach(path => {
                 path.setAttribute('fill', 'blue');
                 path.setAttribute('stroke', 'blue');
               });
               
-              // Find and color all text elements inside this note (noteheads)
               const noteheads = el.querySelectorAll('.vf-notehead');
               noteheads.forEach(notehead => {
                 notehead.setAttribute('fill', 'blue');
@@ -422,30 +389,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
                 textElements.forEach(text => {
                   text.setAttribute('fill', 'blue');
                   text.style.fill = 'blue';
-                });
-              });
-            } else {
-              // Explicitly set inactive notes to white
-              el.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-              el.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
-              el.removeAttribute('data-active');
-              
-              const paths = el.querySelectorAll('path');
-              paths.forEach(path => {
-                path.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-                path.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
-              });
-              
-              const noteheads = el.querySelectorAll('.vf-notehead');
-              noteheads.forEach(notehead => {
-                notehead.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-                notehead.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
-                notehead.removeAttribute('data-active');
-                
-                const textElements = notehead.querySelectorAll('text');
-                textElements.forEach(text => {
-                  text.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-                  text.style.fill = 'rgba(255, 255, 255, 0.8)';
                 });
               });
             }
@@ -464,7 +407,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         factoryRef.current.reset();
       }
     };
-  }, [notes, timeSignature]); // Note: removed currentTime dependency - updating separately for scrolling
+  }, [notes, timeSignature]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {
@@ -493,7 +436,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         });
         
         // Find active notes by time
-        const groupedNotes = groupNotesByTime(notes, currentTime);
+        const groupedNotes = groupNotesByTime(notes, currentTime, timeSignature);
         const staveNoteElements = svg.querySelectorAll('.vf-stavenote');
         
         // Highlight active notes

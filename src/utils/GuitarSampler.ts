@@ -2,10 +2,11 @@ import * as Tone from 'tone';
 
 export type GuitarType = 'acoustic' | 'electric' | 'nylon';
 
-class GuitarSampler {
+export class GuitarSampler {
     private sampler: Tone.Sampler | null = null;
     private isLoaded: boolean = false;
     private currentType: GuitarType = 'acoustic';
+    private activeNotes: Set<string> = new Set();
 
     // Define key samples for each guitar type - Tone.js will interpolate between these
     private notesByType = {
@@ -42,7 +43,7 @@ class GuitarSampler {
     };
 
     constructor() {
-        this.initializeSampler();
+        this.initializeSampler('acoustic');
     }
 
     private getBaseUrl(type: GuitarType): string {
@@ -50,15 +51,16 @@ class GuitarSampler {
     }
 
     public async switchGuitar(type: GuitarType) {
-        this.currentType = type;
+        this.stopAllNotes(); // Stop any playing notes before switching
         this.isLoaded = false;
         if (this.sampler) {
             this.sampler.dispose();
         }
-        await this.initializeSampler();
+        this.currentType = type;
+        await this.initializeSampler(type);
     }
 
-    private initializeSampler() {
+    private initializeSampler(type: GuitarType) {
         // Create a loading indicator
         const progress = document.createElement('div');
         progress.id = 'loading-progress';
@@ -71,42 +73,52 @@ class GuitarSampler {
         progress.style.color = 'white';
         progress.style.borderRadius = '8px';
         progress.style.zIndex = '1000';
-        progress.textContent = `Loading ${this.currentType} guitar samples...`;
+        progress.textContent = `Loading ${type} guitar samples...`;
         document.body.appendChild(progress);
 
         // Initialize the sampler with our notes
         this.sampler = new Tone.Sampler({
-            urls: this.notesByType[this.currentType],
-            baseUrl: this.getBaseUrl(this.currentType),
+            urls: this.notesByType[type],
+            baseUrl: this.getBaseUrl(type),
             onload: () => {
                 this.isLoaded = true;
-                console.log(`${this.currentType} guitar samples loaded successfully`);
+                console.log(`${type} guitar samples loaded successfully`);
                 progress.remove();
             },
             onerror: (error) => {
-                console.error(`Error loading ${this.currentType} guitar samples:`, error);
-                progress.textContent = `Error loading ${this.currentType} guitar samples. Please refresh.`;
+                console.error(`Error loading ${type} guitar samples:`, error);
+                progress.textContent = `Error loading ${type} guitar samples. Please refresh.`;
                 setTimeout(() => progress.remove(), 3000);
             }
         }).toDestination();
     }
 
-    public async playNote(note: string, time: number, duration: number) {
-        if (!this.isLoaded || !this.sampler) {
-            console.warn('Sampler not loaded yet');
-            return;
-        }
-
-        try {
-            // Let Tone.js handle the pitch shifting automatically
+    public playNote(note: string, time: number, duration: number) {
+        if (this.sampler && this.isLoaded) {
             this.sampler.triggerAttackRelease(note, duration, time);
-        } catch (error) {
-            console.error('Error playing note:', note, error);
+            this.activeNotes.add(note);
+            // Remove note from active notes after duration
+            Tone.Transport.schedule(() => {
+                this.activeNotes.delete(note);
+            }, time + duration);
+        }
+    }
+
+    public stopAllNotes() {
+        if (this.sampler) {
+            // Release all active notes
+            this.activeNotes.forEach(note => {
+                this.sampler?.triggerRelease(note, Tone.now());
+            });
+            this.activeNotes.clear();
+            
+            // Also call releaseAll as a safety measure
+            this.sampler.releaseAll();
         }
     }
 
     public isReady(): boolean {
-        return this.isLoaded;
+        return this.isLoaded && this.sampler !== null;
     }
 
     public getCurrentType(): GuitarType {

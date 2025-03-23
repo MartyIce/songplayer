@@ -8,13 +8,13 @@
   border-radius: 8px;
 }
 
-.control-buttons {
+.main-controls {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
 }
 
-.control-btn {
+.play-button, .stop-button {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
@@ -24,20 +24,33 @@
   align-items: center;
   gap: 5px;
   transition: all 0.2s ease;
+  color: white;
 }
 
-.play-btn {
+.play-button {
   background-color: #4caf50;
-  color: white;
+}
+
+.play-button:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+.stop-button {
+  background-color: #f44336;
+}
+
+.stop-button:hover {
+  background-color: #da190b;
+  transform: scale(1.05);
+}
+
+.play-button:active, .stop-button:active {
+  transform: scale(0.98);
 }
 
 .pause-btn {
   background-color: #ff9800;
-  color: white;
-}
-
-.stop-btn {
-  background-color: #f44336;
   color: white;
 }
 
@@ -166,4 +179,48 @@
 .tempo-control input[type="range"]::-moz-range-thumb:hover {
   transform: scale(1.1);
   box-shadow: 0 0 10px rgba(97, 218, 251, 0.5);
+}
+
+.metronome-control {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+  color: #fff;
+}
+
+.metronome-control label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.metronome-control input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #61dafb;
+}
+
+.playback-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  color: #fff;
+}
+
+.control-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.control-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #61dafb;
 } 

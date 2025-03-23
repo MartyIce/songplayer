@@ -30,6 +30,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const [bpm, setBpm] = useState<number>(song.bpm);
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const [guitarType, setGuitarType] = useState<GuitarType>('acoustic');
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
@@ -38,6 +40,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   
   // Keep track of scheduled notes
   const scheduledNotes = useRef<number[]>([]);
+  
+  // Create refs for Tone.js objects
+  const metronomeRef = useRef<Tone.Player | null>(null);
+  const metronomePart = useRef<Tone.Part | null>(null);
   
   // Calculate the total duration of the song in beats
   const songDuration = useMemo(() => {
@@ -61,6 +67,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   useEffect(() => {
     // Set initial tempo and time signature
     Tone.Transport.bpm.value = song.bpm;
+    const [beatsPerBar] = song.timeSignature || [3, 4];
+    Tone.Transport.timeSignature = beatsPerBar;
     setBpm(song.bpm);
     
     // Clean up function
@@ -78,12 +86,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
     scheduledNotes.current = [];
 
+    if (isMuted) return; // Don't schedule notes if muted
+
     // Schedule each note that comes after startBeat
     processedSong.notes
       .filter((note: Note) => note.time >= startBeat)
       .forEach((note: Note) => {
         const timeInSeconds = note.time * (60 / Tone.Transport.bpm.value);
-        const id = Tone.Transport.schedule((time) => {
+        const id = Tone.Transport.schedule(time => {
           playNote(note);
         }, timeInSeconds);
         scheduledNotes.current.push(id);
@@ -178,9 +188,26 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     }
   };
 
+  // Handle mute change
+  const handleMuteChange = (muted: boolean) => {
+    setIsMuted(muted);
+    
+    // Clear all currently scheduled notes
+    scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+    scheduledNotes.current = [];
+    
+    // Stop any currently playing notes
+    guitarSampler.stopAllNotes();
+    
+    if (!muted && isPlaying) {
+      // If unmuting while playing, schedule notes from current position
+      scheduleNotes(currentTime);
+    }
+  };
+
   // Play a note using the guitar sampler
   const playNote = (note: Note) => {
-    if (!guitarSampler.isReady()) return;
+    if (!guitarSampler.isReady() || isMuted) return;
 
     let noteToPlay: string | null = null;
 
@@ -189,14 +216,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       noteToPlay = note.note;
     } else if ('string' in note) {
       // StringFretNote - calculate from string and fret
-      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Order from high to low
-      const stringIndex = note.string - 1; // Convert to 0-based index
+      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
+      const stringIndex = note.string - 1;
       const baseNote = baseNotes[stringIndex];
       noteToPlay = Tone.Frequency(baseNote).transpose(note.fret).toNote();
     }
 
     if (noteToPlay) {
-      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration);
+      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration * (60 / Tone.Transport.bpm.value));
     }
   };
   
@@ -270,6 +297,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
     scheduledNotes.current = [];
     
+    // Stop any currently playing notes
+    guitarSampler.stopAllNotes();
+    
     // Reset position
     Tone.Transport.seconds = 0;
     setCurrentTime(0);
@@ -280,9 +310,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const handleBpmChange = (newBpm: number) => {
     setBpm(newBpm);
     
-    // Store current position in beats
+    // Store current position and state
     const wasPlaying = isPlaying;
-    const currentPositionInBeats = currentTime;
+    const currentBeat = currentTime;
     
     // Pause if playing
     if (wasPlaying) {
@@ -293,30 +323,120 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     Tone.Transport.bpm.value = newBpm;
     
     // Convert current position from beats to seconds for the new tempo
-    const newPositionInSeconds = currentPositionInBeats * (60 / newBpm);
+    const newPositionInSeconds = currentBeat * (60 / newBpm);
+    Tone.Transport.seconds = newPositionInSeconds;
     
     // Resume if was playing
     if (wasPlaying) {
       // Reschedule notes from current position
-      scheduleNotes(currentPositionInBeats);
-      Tone.Transport.seconds = newPositionInSeconds;
+      scheduleNotes(currentBeat);
       Tone.Transport.start();
     }
   };
   
+  // Create a click synth for the metronome
+  useEffect(() => {
+    // Create a click synth with a short envelope
+    const clickSynth = new Tone.Synth({
+      oscillator: {
+        type: 'sine',
+      },
+      envelope: {
+        attack: 0.001,
+        decay: 0.05,
+        sustain: 0,
+        release: 0.05,
+      },
+    }).toDestination();
+    clickSynth.volume.value = -10; // Reduce volume
+
+    // Create metronome part
+    if (metronomePart.current) {
+      metronomePart.current.dispose();
+    }
+
+    // Set up time signature
+    const [beatsPerBar] = song.timeSignature || [3, 4];
+    Tone.Transport.timeSignature = beatsPerBar;
+
+    // Calculate total beats in the song
+    const totalBeats = Math.ceil(song.notes[song.notes.length - 1].time + 
+                               song.notes[song.notes.length - 1].duration);
+    
+    // Create metronome clicks for each beat
+    const metronomeEvents = Array.from({ length: totalBeats }, (_, i) => ({
+      time: `${Math.floor(i / beatsPerBar)}:${i % beatsPerBar}:0`,
+      beat: i % beatsPerBar
+    }));
+
+    metronomePart.current = new Tone.Part((time, event) => {
+      if (metronomeEnabled) {
+        // Accent first beat of each bar (beat 0)
+        const isAccent = event.beat === 0;
+        clickSynth.triggerAttackRelease(
+          isAccent ? 1200 : 800, // Higher pitch for accented beats
+          0.02, // Shorter duration for a crisper click
+          time,
+          isAccent ? 0.7 : 0.5 // Higher velocity for accented beats
+        );
+      }
+    }, metronomeEvents);
+
+    metronomePart.current.loop = false;
+    metronomePart.current.start(0);
+
+    return () => {
+      clickSynth.dispose();
+      metronomePart.current?.dispose();
+    };
+  }, [metronomeEnabled, song.notes, song.timeSignature]);
+
+  const handleMetronomeChange = (enabled: boolean) => {
+    setMetronomeEnabled(enabled);
+  };
+
+  const handlePlayPause = async () => {
+    await Tone.start();
+    
+    if (Tone.Transport.state === 'started') {
+      // Pause playback
+      Tone.Transport.pause();
+      setIsPlaying(false);
+    } else {
+      // Start or resume playback
+      if (currentTime >= songDuration) {
+        // Reset if at end
+        setCurrentTime(0);
+        Tone.Transport.seconds = 0;
+      }
+      
+      // Schedule notes from current position if not muted
+      if (!isMuted) {
+        scheduleNotes(currentTime);
+      }
+      
+      // Start transport
+      Tone.Transport.start();
+      setIsPlaying(true);
+    }
+  };
+
   return (
     <div className="tablature-player">
-      <Controls 
+      <Controls
         isPlaying={isPlaying}
-        onPlay={handlePlay}
-        onPause={handlePause}
+        onPlayPause={handlePlayPause}
         onStop={handleStop}
-        bpm={bpm}
-        onBpmChange={handleBpmChange}
         currentTime={currentTime}
-        songDuration={songDuration}
+        duration={songDuration}
+        tempo={bpm}
+        onTempoChange={handleBpmChange}
         guitarType={guitarType}
         onGuitarTypeChange={handleGuitarTypeChange}
+        metronomeEnabled={metronomeEnabled}
+        onMetronomeChange={handleMetronomeChange}
+        isMuted={isMuted}
+        onMuteChange={handleMuteChange}
       />
       
       <VexStaffDisplay

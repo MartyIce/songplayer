@@ -30,6 +30,12 @@
     { "note": "D5", "time": 9.0, "duration": 2.0 },
 
     { "rest": true, "time": 11.0, "duration": 1.0 },
-    { "rest": true, "time": 11.0, "duration": 1.0 }
+    { "rest": true, "time": 11.0, "duration": 1.0 },
+
+    { "note": "A4", "time": 12.0, "duration": 2.0 },
+    { "note": "F5", "time": 12.0, "duration": 2.0 },
+    
+    { "note": "B4", "time": 14.0, "duration": 1.0 },
+    { "note": "G5", "time": 14.0, "duration": 1.0 }
   ]
 }

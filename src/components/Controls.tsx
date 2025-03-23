@@ -4,32 +4,38 @@ import { GuitarType } from '../utils/GuitarSampler';
 
 interface ControlsProps {
   isPlaying: boolean;
-  onPlay: () => void;
-  onPause: () => void;
+  onPlayPause: () => void;
   onStop: () => void;
-  bpm: number;
-  onBpmChange: (bpm: number) => void;
-  currentTime?: number;
-  songDuration?: number;
+  currentTime: number;
+  duration: number;
+  tempo: number;
+  onTempoChange: (newTempo: number) => void;
   guitarType: GuitarType;
   onGuitarTypeChange: (type: GuitarType) => void;
+  metronomeEnabled: boolean;
+  onMetronomeChange: (enabled: boolean) => void;
+  isMuted: boolean;
+  onMuteChange: (muted: boolean) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
   isPlaying,
-  onPlay,
-  onPause,
+  onPlayPause,
   onStop,
-  bpm,
-  onBpmChange,
-  currentTime = 0,
-  songDuration = 0,
+  currentTime,
+  duration,
+  tempo,
+  onTempoChange,
   guitarType,
-  onGuitarTypeChange
+  onGuitarTypeChange,
+  metronomeEnabled,
+  onMetronomeChange,
+  isMuted,
+  onMuteChange,
 }) => {
   const handleBpmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newBpm = parseFloat(e.target.value);
-    onBpmChange(newBpm);
+    onTempoChange(newBpm);
   };
 
   const handleGuitarChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -47,60 +53,69 @@ const Controls: React.FC<ControlsProps> = ({
   const getSliderBackground = () => {
     const min = 40;
     const max = 240;
-    const percentage = ((bpm - min) / (max - min)) * 100;
+    const percentage = ((tempo - min) / (max - min)) * 100;
     return `linear-gradient(to right, #61dafb 0%, #61dafb ${percentage}%, #444 ${percentage}%, #444 100%)`;
   };
   
   return (
     <div className="controls">
-      <div className="control-buttons">
-        {!isPlaying ? (
-          <button className="control-btn play-btn" onClick={onPlay}>
-            <span className="icon">▶</span> Play
-          </button>
-        ) : (
-          <button className="control-btn pause-btn" onClick={onPause}>
-            <span className="icon">⏸</span> Pause
-          </button>
-        )}
-        <button className="control-btn stop-btn" onClick={onStop}>
-          <span className="icon">⏹</span> Stop
+      <div className="main-controls">
+        <button className="play-button" onClick={onPlayPause}>
+          {isPlaying ? '⏸ Pause' : '▶ Play'}
+        </button>
+        <button className="stop-button" onClick={onStop}>
+          ⏹ Stop
         </button>
       </div>
-      
+
       <div className="time-display">
-        <span>{formatTime(currentTime)}</span>
-        {songDuration > 0 && (
-          <span> / {formatTime(songDuration)}</span>
-        )}
+        {formatTime(currentTime)} / {formatTime(duration)}
       </div>
 
       <div className="guitar-control">
-        <label htmlFor="guitar-select">Guitar Type:</label>
-        <select
-          id="guitar-select"
+        <label>Guitar Type:</label>
+        <select 
+          className="guitar-select"
           value={guitarType}
           onChange={handleGuitarChange}
-          className="guitar-select"
         >
           <option value="acoustic">Acoustic</option>
           <option value="electric">Electric</option>
           <option value="nylon">Nylon</option>
         </select>
       </div>
-      
+
       <div className="tempo-control">
-        <label htmlFor="tempo-slider">Tempo: {bpm} BPM</label>
+        <label>Tempo: {tempo} BPM</label>
         <input
-          id="tempo-slider"
           type="range"
           min="40"
           max="240"
-          step="1"
-          value={bpm}
+          value={tempo}
           onChange={handleBpmChange}
           style={{ background: getSliderBackground() }}
+          className="tempo-slider"
         />
+      </div>
+
+      <div className="playback-controls">
+        <label className="control-checkbox">
+          <input
+            type="checkbox"
+            checked={metronomeEnabled}
+            onChange={(e) => onMetronomeChange(e.target.checked)}
+          />
+          Enable Metronome
+        </label>
+
+        <label className="control-checkbox">
+          <input
+            type="checkbox"
+            checked={isMuted}
+            onChange={(e) => onMuteChange(e.target.checked)}
+          />
+          Mute Guitar
+        </label>
       </div>
     </div>
   );
