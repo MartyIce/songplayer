@@ -27,7 +27,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [speed, setSpeed] = useState<number>(1);
+  const [bpm, setBpm] = useState<number>(song.bpm);
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const [guitarType, setGuitarType] = useState<GuitarType>('acoustic');
   
@@ -36,12 +36,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const synth = useRef<Tone.PolySynth | null>(null);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   
-  // Calculate the total duration of the song
+  // Keep track of scheduled notes
+  const scheduledNotes = useRef<number[]>([]);
+  
+  // Calculate the total duration of the song in beats
   const songDuration = useMemo(() => {
     if (!processedSong.notes.length) return 0;
-    
     const lastNote = [...processedSong.notes].sort((a, b) => (b.time + b.duration) - (a.time + a.duration))[0];
-    return lastNote.time + lastNote.duration + 1; // Add a small buffer
+    return lastNote.time + lastNote.duration;
   }, [processedSong.notes]);
   
   // Initialize the synth
@@ -54,6 +56,39 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       }
     };
   }, []);
+  
+  // Initialize Tone.Transport
+  useEffect(() => {
+    // Set initial tempo and time signature
+    Tone.Transport.bpm.value = song.bpm;
+    setBpm(song.bpm);
+    
+    // Clean up function
+    return () => {
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+      scheduledNotes.current = [];
+    };
+  }, [song]);
+  
+  // Schedule all notes when starting playback
+  const scheduleNotes = (startBeat = 0) => {
+    // Clear any previously scheduled notes
+    scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+    scheduledNotes.current = [];
+
+    // Schedule each note that comes after startBeat
+    processedSong.notes
+      .filter((note: Note) => note.time >= startBeat)
+      .forEach((note: Note) => {
+        const timeInSeconds = note.time * (60 / Tone.Transport.bpm.value);
+        const id = Tone.Transport.schedule((time) => {
+          playNote(note);
+        }, timeInSeconds);
+        scheduledNotes.current.push(id);
+      });
+  };
   
   // Update visible notes based on current time
   useEffect(() => {
@@ -87,66 +122,60 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     setVisibleNotes(visible);
   }, [currentTime, processedSong.notes]);
   
-  // Animation loop
-  const animate = (time: number) => {
-    if (!lastTimeRef.current) {
-      lastTimeRef.current = time;
-    }
-    
-    const deltaTime = (time - lastTimeRef.current) / 1000;
-    lastTimeRef.current = time;
-    
-    setCurrentTime(prevTime => {
-      let newTime = prevTime + deltaTime * speed;
-      
-      // Check if the song has reached the end and loop back to the beginning
-      if (newTime >= songDuration) {
-        newTime = 0;
-        lastTimeRef.current = 0;
-      }
-      
-      // Track which notes have already been triggered to prevent duplicate playback
-      const playedNotesMap = new Map();
-      
-      // Check if any notes should be played (only when the exact start time is crossed)
-      processedSong.notes.forEach((note: Note) => {
-        // Generate a unique ID for the note
-        const noteId = `${note.time.toFixed(3)}-${
-          'note' in note ? note.note : 
-          'string' in note ? `${note.string}-${note.fret}` : 'rest'
-        }`;
+  // Update current time based on Transport position
+  useEffect(() => {
+    let animationFrame: number;
+
+    const updateTime = () => {
+      if (isPlaying) {
+        // Convert Transport time to beats
+        const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
         
-        // A note should be played if:
-        // 1. We haven't played it already
-        // 2. Its start time is between the previous and current time positions
-        // 3. We haven't gone backwards in time (e.g., when looping back to start)
-        const shouldPlay = 
-          !playedNotesMap.has(noteId) && 
-          note.time >= prevTime && 
-          note.time < newTime &&
-          newTime > prevTime; // Ensure we didn't wrap around
+        // Check if we need to loop
+        if (transportTimeInBeats >= songDuration) {
+          // Stop transport and clear scheduled notes
+          Tone.Transport.stop();
+          scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+          scheduledNotes.current = [];
           
-        if (shouldPlay) {
-          playNote(note);
-          playedNotesMap.set(noteId, true);
+          // Reset position
+          Tone.Transport.seconds = 0;
+          setCurrentTime(0);
+          
+          // Reschedule notes and restart
+          scheduleNotes(0);
+          Tone.Transport.start();
+        } else {
+          setCurrentTime(transportTimeInBeats);
         }
-      });
-      
-      return newTime;
-    });
-    
-    animationRef.current = requestAnimationFrame(animate);
-  };
+      }
+      animationFrame = requestAnimationFrame(updateTime);
+    };
+
+    if (isPlaying) {
+      animationFrame = requestAnimationFrame(updateTime);
+    }
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [isPlaying, songDuration]);
   
   // Handle guitar type change
   const handleGuitarTypeChange = async (type: GuitarType) => {
-    // If currently playing, stop
-    if (isPlaying) {
-      handleStop();
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
+      handlePause();
     }
     
     setGuitarType(type);
     await guitarSampler.switchGuitar(type);
+    
+    if (wasPlaying) {
+      handlePlay();
+    }
   };
 
   // Play a note using the guitar sampler
@@ -207,33 +236,72 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     return gridLines;
   };
   
-  // Control functions
-  const handlePlay = () => {
+  // Handle play button
+  const handlePlay = async () => {
+    await Tone.start();
     if (!isPlaying) {
-      Tone.start();
-      lastTimeRef.current = 0;
-      animationRef.current = requestAnimationFrame(animate);
+      // Reset if at end
+      if (currentTime >= songDuration) {
+        setCurrentTime(0);
+        Tone.Transport.seconds = 0;
+      }
+      
+      // Schedule notes from current position
+      scheduleNotes(currentTime);
+      
+      // Start transport
+      Tone.Transport.start();
       setIsPlaying(true);
     }
   };
   
+  // Handle pause button
   const handlePause = () => {
-    if (isPlaying && animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
+    if (isPlaying) {
+      Tone.Transport.pause();
       setIsPlaying(false);
     }
   };
   
+  // Handle stop button
   const handleStop = () => {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      setIsPlaying(false);
-      setCurrentTime(0);
-    }
+    // Stop transport and clear all scheduled notes
+    Tone.Transport.stop();
+    scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+    scheduledNotes.current = [];
+    
+    // Reset position
+    Tone.Transport.seconds = 0;
+    setCurrentTime(0);
+    setIsPlaying(false);
   };
   
-  const handleSpeedChange = (newSpeed: number) => {
-    setSpeed(newSpeed);
+  // Handle BPM change
+  const handleBpmChange = (newBpm: number) => {
+    setBpm(newBpm);
+    
+    // Store current position in beats
+    const wasPlaying = isPlaying;
+    const currentPositionInBeats = currentTime;
+    
+    // Pause if playing
+    if (wasPlaying) {
+      Tone.Transport.pause();
+    }
+    
+    // Update tempo
+    Tone.Transport.bpm.value = newBpm;
+    
+    // Convert current position from beats to seconds for the new tempo
+    const newPositionInSeconds = currentPositionInBeats * (60 / newBpm);
+    
+    // Resume if was playing
+    if (wasPlaying) {
+      // Reschedule notes from current position
+      scheduleNotes(currentPositionInBeats);
+      Tone.Transport.seconds = newPositionInSeconds;
+      Tone.Transport.start();
+    }
   };
   
   return (
@@ -243,8 +311,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         onPlay={handlePlay}
         onPause={handlePause}
         onStop={handleStop}
-        speed={speed}
-        onSpeedChange={handleSpeedChange}
+        bpm={bpm}
+        onBpmChange={handleBpmChange}
         currentTime={currentTime}
         songDuration={songDuration}
         guitarType={guitarType}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Factory, Voice, StaveNote, Formatter, Barline } from 'vexflow';
+import * as Tone from 'tone';
 import { Note, StringFretNote } from '../types/SongTypes';
 import './VexStaffDisplay.css';
 
@@ -469,9 +470,10 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
   useEffect(() => {
     if (!containerRef.current || !scrollContainerRef.current) return;
     
-    // Find active note
+    // Find active note based on current time
     const activeNote = notes.find(note => 
-      isNoteActive(note.time, note.duration, currentTime)
+      note.time <= currentTime && 
+      note.time + note.duration > currentTime
     );
     
     // Update active note position
@@ -494,33 +496,18 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         const groupedNotes = groupNotesByTime(notes, currentTime);
         const staveNoteElements = svg.querySelectorAll('.vf-stavenote');
         
+        // Highlight active notes
         staveNoteElements.forEach((el, index) => {
-          const group = groupedNotes[index];
-          if (group && isNoteActive(group.time, group.duration, currentTime)) {  // Use isNoteActive here
-            // Set attributes on the group
-            el.setAttribute('fill', 'blue');
-            el.setAttribute('stroke', 'blue');
+          if (groupedNotes[index]?.active) {
             el.setAttribute('data-active', 'true');
+            el.setAttribute('fill', '#61dafb');
+            el.setAttribute('stroke', '#61dafb');
             
-            // Find and color all paths inside this note
-            const paths = el.querySelectorAll('path');
-            paths.forEach(path => {
-              path.setAttribute('fill', 'blue');
-              path.setAttribute('stroke', 'blue');
-            });
-            
-            // Find and color all text elements inside this note (noteheads)
-            const noteheads = el.querySelectorAll('.vf-notehead');
-            noteheads.forEach(notehead => {
-              notehead.setAttribute('fill', 'blue');
-              notehead.setAttribute('stroke', 'blue');
-              notehead.setAttribute('data-active', 'true');
-              
-              const textElements = notehead.querySelectorAll('text');
-              textElements.forEach(text => {
-                text.setAttribute('fill', 'blue');
-                text.style.fill = 'blue';
-              });
+            // Also highlight all child elements
+            const allChildren = el.querySelectorAll('*');
+            allChildren.forEach(child => {
+              child.setAttribute('fill', '#61dafb');
+              child.setAttribute('stroke', '#61dafb');
             });
           }
         });
@@ -528,7 +515,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
       
       // Scrolling logic - only if not in manual scroll mode
       if (position !== null && !manualScrollMode) {
-        // Continue showing the beginning until the active note reaches the middle
         const containerWidth = scrollContainerRef.current.clientWidth;
         const middlePoint = containerWidth / 2;
         
@@ -540,14 +526,10 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
           const scrollPos = position - middlePoint;
           
           // Smooth scrolling with animation
-          const now = Date.now();
-          if (now - lastScrollTimeRef.current > 50) { // Limit scroll updates
-            lastScrollTimeRef.current = now;
-            scrollContainerRef.current.scrollTo({
-              left: Math.max(0, scrollPos),
-              behavior: 'smooth'
-            });
-          }
+          scrollContainerRef.current.scrollTo({
+            left: Math.max(0, scrollPos),
+            behavior: 'smooth'
+          });
         }
       }
     }

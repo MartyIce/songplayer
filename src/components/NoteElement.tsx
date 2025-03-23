@@ -12,72 +12,77 @@ interface NoteElementProps {
 const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
-  // Initialize synth
-  const synth = useMemo(() => {
-    const s = new Tone.Synth().toDestination();
-    return s;
-  }, []);
-
-  // Calculate note frequency from string and fret
-  const getNoteFrequency = useCallback((stringNum: number, fret: number) => {
-    const baseNote = TUNING[stringNum - 1];
-    return Tone.Frequency(baseNote).transpose(fret).toFrequency();
-  }, []);
-
-  // Handle click to play note
-  const handleClick = useCallback(() => {
-    const frequency = getNoteFrequency(note.string, note.fret);
-    // Play the note for 1 second
-    synth.triggerAttackRelease(frequency, 1);
-  }, [note.string, note.fret, synth, getNoteFrequency]);
-
   // Calculate position and width based on time and duration
   const noteStyle = useMemo(() => {
-    // The trigger line is at 50% of the screen width
+    // The trigger line is at 50% of the viewport width to match the red line
     const triggerLinePosition = 50;
-    
-    // Slow down the scroll rate - notes move at 40px per second 
-    const pixelsPerSecond = 40;
     
     // Calculate the time difference between the note's time and current time
     const timeDiff = note.time - currentTime;
     
-    // Calculate the width proportionally to the duration, but scaled for visual clarity
-    // This ensures the width accurately represents the duration
-    const width = note.duration * pixelsPerSecond * 2;
+    // Calculate the width proportionally to the duration
+    // Using viewport width units for consistent sizing
+    const baseVwPerBeat = 10; // 10vw per beat
     
-    // Calculate the horizontal position (left edge of the note)
-    // When timeDiff is 0, the LEFT EDGE of the note should be at the trigger line
-    const xPosition = triggerLinePosition + (timeDiff * pixelsPerSecond / 5);
+    // Calculate width based on note duration in beats
+    const width = note.duration * baseVwPerBeat;
+    
+    // Calculate position based on time in beats
+    const xPosition = triggerLinePosition + (timeDiff * baseVwPerBeat);
     
     // Calculate vertical position based on string number
-    // Each string has a height of approximately 66.67px (400px / 6 strings)
-    // String 1 (high E) at the bottom, String 6 (low E) at the top
     const stringHeight = 66.67;
     const yPosition = (note.string - 1) * stringHeight + (stringHeight / 2);
+
+    // Calculate opacity based on note duration and current time
+    let opacity = 1;
+    const noteEndTime = note.time + note.duration;
+    if (currentTime > noteEndTime) {
+      opacity = Math.max(0, 1 - (currentTime - noteEndTime));
+    }
     
     return {
-      left: `${xPosition}%`,
+      left: `${xPosition}vw`,
       top: `${yPosition}px`,
-      width: `${width}px`,
+      width: `${width}vw`,
       backgroundColor: note.color || '#61dafb',
-      cursor: 'pointer', // Add pointer cursor to indicate clickability
+      opacity,
+      cursor: 'pointer',
     };
   }, [note.time, note.duration, note.string, note.color, currentTime]);
   
-  // Determine if the note is active (being played) - exact time matching
-  const isActive = note.time <= currentTime && note.time + note.duration > currentTime;
+  // Determine if the note is active (being played)
+  const isActive = useMemo(() => {
+    // Calculate the note's center position relative to the trigger line
+    const triggerLinePosition = 50; // Match the visual trigger line
+    const baseVwPerBeat = 10;
+    const timeDiff = note.time - currentTime;
+    const notePosition = triggerLinePosition + (timeDiff * baseVwPerBeat);
+    
+    // Note is active when its center crosses the trigger line
+    const isCrossingTriggerLine = Math.abs(notePosition - triggerLinePosition) < 1;
+    return isCrossingTriggerLine;
+  }, [note.time, currentTime]);
   
   // Determine if the note is past (already played)
-  const isPast = note.time + note.duration <= currentTime;
+  const isPast = useMemo(() => {
+    return note.time < currentTime;
+  }, [note.time, currentTime]);
   
-  // Calculate how much of the note has been played (for the progress indicator)
+  // Calculate progress percentage
   const progressPercentage = useMemo(() => {
     if (currentTime <= note.time) return 0;
     if (currentTime >= note.time + note.duration) return 100;
-    
     return ((currentTime - note.time) / note.duration) * 100;
-  }, [currentTime, note.time, note.duration]);
+  }, [note.time, note.duration, currentTime]);
+
+  // Handle click to play note
+  const handleClick = useCallback(() => {
+    const frequency = Tone.Frequency(TUNING[note.string - 1]).transpose(note.fret).toFrequency();
+    const synth = new Tone.Synth().toDestination();
+    synth.triggerAttackRelease(frequency, 1);
+    setTimeout(() => synth.dispose(), 2000); // Clean up synth after note finishes
+  }, [note.string, note.fret]);
   
   return (
     <div 

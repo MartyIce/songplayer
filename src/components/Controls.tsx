@@ -7,8 +7,8 @@ interface ControlsProps {
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
-  speed: number;
-  onSpeedChange: (speed: number) => void;
+  bpm: number;
+  onBpmChange: (bpm: number) => void;
   currentTime?: number;
   songDuration?: number;
   guitarType: GuitarType;
@@ -20,16 +20,16 @@ const Controls: React.FC<ControlsProps> = ({
   onPlay,
   onPause,
   onStop,
-  speed,
-  onSpeedChange,
+  bpm,
+  onBpmChange,
   currentTime = 0,
   songDuration = 0,
   guitarType,
   onGuitarTypeChange
 }) => {
-  const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSpeed = parseFloat(e.target.value);
-    onSpeedChange(newSpeed);
+  const handleBpmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newBpm = parseFloat(e.target.value);
+    onBpmChange(newBpm);
   };
 
   const handleGuitarChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -41,6 +41,14 @@ const Controls: React.FC<ControlsProps> = ({
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate slider background gradient
+  const getSliderBackground = () => {
+    const min = 40;
+    const max = 240;
+    const percentage = ((bpm - min) / (max - min)) * 100;
+    return `linear-gradient(to right, #61dafb 0%, #61dafb ${percentage}%, #444 ${percentage}%, #444 100%)`;
   };
   
   return (
@@ -81,16 +89,17 @@ const Controls: React.FC<ControlsProps> = ({
         </select>
       </div>
       
-      <div className="speed-control">
-        <label htmlFor="speed-slider">Speed: {speed.toFixed(1)}x</label>
+      <div className="tempo-control">
+        <label htmlFor="tempo-slider">Tempo: {bpm} BPM</label>
         <input
-          id="speed-slider"
+          id="tempo-slider"
           type="range"
-          min="0.5"
-          max="2"
-          step="0.1"
-          value={speed}
-          onChange={handleSpeedChange}
+          min="40"
+          max="240"
+          step="1"
+          value={bpm}
+          onChange={handleBpmChange}
+          style={{ background: getSliderBackground() }}
         />
       </div>
     </div>
