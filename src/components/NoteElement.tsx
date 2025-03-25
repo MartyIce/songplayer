@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import * as Tone from 'tone';
 import { StringFretNote } from '../types/SongTypes';
 import './NoteElement.css';
@@ -12,23 +12,47 @@ interface NoteElementProps {
 const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  // Set up resize observer to handle container width changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current.closest('.tablature-display');
+    if (!container) return;
+
+    setContainerWidth(container.clientWidth);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   // Calculate position and width based on time and duration
   const noteStyle = useMemo(() => {
-    // The trigger line is at 50% of the viewport width to match the red line
-    const triggerLinePosition = 50;
+    // Get the trigger line position in pixels (50% of container width)
+    const triggerLinePosition = containerWidth * 0.5;
     
     // Calculate the time difference between the note's time and current time
     const timeDiff = note.time - currentTime;
     
-    // Calculate the width proportionally to the duration
-    // Using viewport width units for consistent sizing
-    const baseVwPerBeat = 10; // 10vw per beat
+    // Use fixed pixel units instead of viewport units for consistent sizing
+    const basePixelsPerBeat = 100; // 100px per beat
     
     // Calculate width based on note duration in beats
-    const width = note.duration * baseVwPerBeat;
+    const width = note.duration * basePixelsPerBeat;
     
     // Calculate position based on time in beats
-    const xPosition = triggerLinePosition + (timeDiff * baseVwPerBeat);
+    const xPosition = triggerLinePosition + (timeDiff * basePixelsPerBeat);
     
     // Calculate vertical position based on string number
     const stringHeight = 66.67;
@@ -42,22 +66,22 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
     }
     
     return {
-      left: `${xPosition}vw`,
+      left: `${xPosition}px`,
       top: `${yPosition}px`,
-      width: `${width}vw`,
+      width: `${width}px`,
       backgroundColor: note.color || '#61dafb',
       opacity,
       cursor: 'pointer',
     };
-  }, [note.time, note.duration, note.string, note.color, currentTime]);
+  }, [note.time, note.duration, note.string, note.color, currentTime, containerWidth]);
   
   // Determine if the note is active (being played)
   const isActive = useMemo(() => {
     // Calculate the note's center position relative to the trigger line
     const triggerLinePosition = 50; // Match the visual trigger line
-    const baseVwPerBeat = 10;
+    const basePixelsPerBeat = 100;
     const timeDiff = note.time - currentTime;
-    const notePosition = triggerLinePosition + (timeDiff * baseVwPerBeat);
+    const notePosition = triggerLinePosition + (timeDiff * basePixelsPerBeat);
     
     // Note is active when its center crosses the trigger line
     const isCrossingTriggerLine = Math.abs(notePosition - triggerLinePosition) < 1;
@@ -80,8 +104,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   const handleClick = useCallback(() => {
     const frequency = Tone.Frequency(TUNING[note.string - 1]).transpose(note.fret).toFrequency();
     const synth = new Tone.Synth().toDestination();
-    synth.triggerAttackRelease(frequency, 1);
-    setTimeout(() => synth.dispose(), 2000); // Clean up synth after note finishes
+    synth.triggerAttackRelease(frequency, "8n");
   }, [note.string, note.fret]);
   
   return (
@@ -89,6 +112,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
       className={`note-element ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`}
       style={noteStyle}
       onClick={handleClick}
+      ref={containerRef}
     >
       <div className="note-content">
         <span className="fret-number">{note.fret}</span>

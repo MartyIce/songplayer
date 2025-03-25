@@ -44,6 +44,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 /* Add a subtle grid for better visual reference */
@@ -66,4 +67,18 @@
 .grid-line.vertical {
   width: 1px;
   height: 100%;
+}
+
+/* Ensure notes stay within the container */
+.note-element {
+  position: absolute;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Ensure the tablature display maintains aspect ratio */
+@media (max-width: 1000px) {
+  .tablature-player {
+    padding: 0 20px;
+  }
 } 
