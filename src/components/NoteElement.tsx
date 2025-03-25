@@ -77,16 +77,9 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   
   // Determine if the note is active (being played)
   const isActive = useMemo(() => {
-    // Calculate the note's center position relative to the trigger line
-    const triggerLinePosition = 50; // Match the visual trigger line
-    const basePixelsPerBeat = 100;
-    const timeDiff = note.time - currentTime;
-    const notePosition = triggerLinePosition + (timeDiff * basePixelsPerBeat);
-    
-    // Note is active when its center crosses the trigger line
-    const isCrossingTriggerLine = Math.abs(notePosition - triggerLinePosition) < 1;
-    return isCrossingTriggerLine;
-  }, [note.time, currentTime]);
+    // Note is active when current time is within its duration
+    return currentTime >= note.time && currentTime <= note.time + note.duration;
+  }, [note.time, note.duration, currentTime]);
   
   // Determine if the note is past (already played)
   const isPast = useMemo(() => {
