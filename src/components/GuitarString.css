@@ -1,9 +1,10 @@
 .guitar-string {
   width: 100%;
-  background-color: #d3d3d3;
+  background-color: #000;
   position: relative;
-  margin: 25px 0;
-  box-shadow: 0 0 8px rgba(211, 211, 211, 0.7);
+  margin: 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  height: 2px;
 }
 
 .string-label {

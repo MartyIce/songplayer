@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Tone from 'tone';
 import { SongData, StringFretNote, Note } from '../types/SongTypes';
 import './TablaturePlayer.css';
@@ -25,6 +25,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     return [song, song];
   }, [song]);
 
+  const basePixelsPerBeat = 60;
+  
+  // State declarations
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [bpm, setBpm] = useState<number>(song.bpm);
@@ -32,16 +35,23 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const [guitarType, setGuitarType] = useState<GuitarType>('acoustic');
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStart, setLoopStart] = useState(0);
+  const [loopEnd, setLoopEnd] = useState(song.notes[song.notes.length - 1].time + song.notes[song.notes.length - 1].duration);
+  const [isDragging, setIsDragging] = useState(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [startX, setStartX] = useState(0);
+  const [isManualScrolling, setIsManualScrolling] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   
+  // Refs
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
   const synth = useRef<Tone.PolySynth | null>(null);
   const notesContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Keep track of scheduled notes
+  const tablatureContentRef = useRef<HTMLDivElement>(null);
+  const dragTimeout = useRef<NodeJS.Timeout>();
   const scheduledNotes = useRef<number[]>([]);
-  
-  // Create refs for Tone.js objects
   const metronomeRef = useRef<Tone.Player | null>(null);
   const metronomePart = useRef<Tone.Part | null>(null);
   
@@ -70,6 +80,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
     setBpm(song.bpm);
+    setLoopEnd(songDuration);
     
     // Clean up function
     return () => {
@@ -78,7 +89,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
       scheduledNotes.current = [];
     };
-  }, [song]);
+  }, [song, songDuration]);
   
   // Schedule all notes when starting playback
   const scheduleNotes = (startBeat = 0) => {
@@ -90,7 +101,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
 
     // Schedule each note that comes after startBeat
     processedSong.notes
-      .filter((note: Note) => note.time >= startBeat)
+      .filter((note: Note) => {
+        if (loopEnabled) {
+          return note.time >= startBeat && note.time < loopEnd;
+        }
+        return note.time >= startBeat;
+      })
       .forEach((note: Note) => {
         const timeInSeconds = note.time * (60 / Tone.Transport.bpm.value);
         const id = Tone.Transport.schedule(time => {
@@ -98,6 +114,17 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         }, timeInSeconds);
         scheduledNotes.current.push(id);
       });
+
+    // Schedule loop if enabled
+    if (loopEnabled) {
+      const loopEndTime = loopEnd * (60 / Tone.Transport.bpm.value);
+      const loopId = Tone.Transport.schedule(time => {
+        setCurrentTime(loopStart);
+        Tone.Transport.position = loopStart;
+        scheduleNotes(loopStart);
+      }, loopEndTime);
+      scheduledNotes.current.push(loopId);
+    }
   };
   
   // Update visible notes based on current time
@@ -132,31 +159,68 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     setVisibleNotes(visible);
   }, [currentTime, processedSong.notes]);
   
+  // Initialize position
+  useEffect(() => {
+    const initializePosition = () => {
+      if (containerRef.current) {
+        const triggerLinePosition = containerRef.current.clientWidth / 2;
+        setScrollOffset(triggerLinePosition);
+      }
+    };
+
+    // Initial setup
+    initializePosition();
+
+    // Add a small delay to ensure the container is properly rendered
+    const timeoutId = setTimeout(initializePosition, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current && !isManualScrolling && !isPlaying) {
+        const containerWidth = containerRef.current.clientWidth;
+        setScrollOffset(containerWidth / 2);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isManualScrolling, isPlaying]);
+
+  // Auto-scroll during playback
+  useEffect(() => {
+    if (isPlaying && currentTime > 0 && containerRef.current) {
+      const basePixelsPerBeat = 60;
+      const containerWidth = containerRef.current.clientWidth;
+      setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
+    }
+  }, [isPlaying, currentTime]);
+
   // Update current time based on Transport position
   useEffect(() => {
     let animationFrame: number;
+    let lastTime = 0;
 
-    const updateTime = () => {
+    const updateTime = (timestamp: number) => {
       if (isPlaying) {
-        // Convert Transport time to beats
+        const delta = timestamp - lastTime;
+        lastTime = timestamp;
+
         const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
         
-        // Check if we need to loop
         if (transportTimeInBeats >= songDuration) {
-          // Stop transport and clear scheduled notes
-          Tone.Transport.stop();
-          scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-          scheduledNotes.current = [];
-          
-          // Reset position
-          Tone.Transport.seconds = 0;
-          setCurrentTime(0);
-          
-          // Reschedule notes and restart
-          scheduleNotes(0);
-          Tone.Transport.start();
+          handleStop();
         } else {
           setCurrentTime(transportTimeInBeats);
+          if (!isManualScrolling && containerRef.current) {
+            const containerWidth = containerRef.current.clientWidth;
+            // Calculate offset to keep the current position at the trigger line
+            const newOffset = containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat);
+            setScrollOffset(newOffset);
+          }
         }
       }
       animationFrame = requestAnimationFrame(updateTime);
@@ -171,8 +235,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration]);
-  
+  }, [isPlaying, songDuration, isManualScrolling]);
+
   // Handle guitar type change
   const handleGuitarTypeChange = async (type: GuitarType) => {
     const wasPlaying = isPlaying;
@@ -232,30 +296,41 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     const gridLines = [];
     
     // Horizontal lines (for strings)
-    for (let i = 1; i <= 6; i++) {
-      // Adjust for the new display height (400px / 6 strings)
-      const stringHeight = 66.67;
-      // Reverse the position calculation so string 1 is at the bottom
-      const yPosition = (6 - i) * stringHeight + (stringHeight / 2);
-      
+    // With the new flexbox layout, we need to calculate positions differently
+    const containerHeight = 280;
+    const paddingTop = 40;
+    const contentHeight = containerHeight - (paddingTop * 2);
+    const stringSpacing = contentHeight / 5; // 5 spaces for 6 strings
+    
+    for (let i = 0; i < 6; i++) {
+      const yPosition = paddingTop + (i * stringSpacing);
       gridLines.push(
         <div 
           key={`h-${i}`} 
-          className="grid-line" 
-          style={{ top: `${yPosition}px` }}
+          className="grid-line horizontal" 
+          style={{ 
+            top: `${yPosition}px`,
+            opacity: 0.15 // Make grid lines more subtle
+          }}
         />
       );
     }
     
     // Vertical lines (time markers)
-    for (let i = 1; i <= 10; i++) {
-      const xPosition = i * 10; // Every 10% of the width
-      
+    const linesPerBeat = 1; // One line per beat
+    const totalBeats = Math.ceil(songDuration);
+    const totalLines = totalBeats * linesPerBeat;
+    
+    for (let i = 0; i <= totalLines; i++) {
+      const xPosition = i * basePixelsPerBeat + 20; // Add left padding
       gridLines.push(
         <div 
           key={`v-${i}`} 
           className="grid-line vertical" 
-          style={{ left: `${xPosition}%` }}
+          style={{ 
+            left: `${xPosition}px`,
+            opacity: 0.15 // Make grid lines more subtle
+          }}
         />
       );
     }
@@ -265,6 +340,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   
   // Handle play button
   const handlePlay = async () => {
+    // Ensure container is ready before playing
+    if (!containerRef.current) {
+      console.warn('Container not ready yet');
+      return;
+    }
+
     await Tone.start();
     if (!isPlaying) {
       // Reset if at end
@@ -272,6 +353,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         setCurrentTime(0);
         Tone.Transport.seconds = 0;
       }
+      
+      // Initialize scroll position
+      const containerWidth = containerRef.current.clientWidth;
+      setScrollOffset(containerWidth / 2);
       
       // Schedule notes from current position
       scheduleNotes(currentTime);
@@ -421,22 +506,128 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     }
   };
 
+  // Handle loop points change
+  const handleLoopPointsChange = (start: number, end: number) => {
+    setLoopStart(start);
+    setLoopEnd(end);
+    if (isPlaying && loopEnabled) {
+      scheduleNotes(currentTime);
+    }
+  };
+
+  // Calculate content transform based on scroll offset
+  const getContentTransform = useCallback(() => {
+    return `translateX(${scrollOffset}px)`;
+  }, [scrollOffset]);
+
+  // Handle manual scrolling
+  const handleScroll = useCallback((deltaX: number) => {
+    setScrollOffset(prev => prev - deltaX);
+  }, []);
+
+  // Handle mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setStartX(e.clientX - scrollOffset);
+    setIsManualScrolling(true);
+    if (tablatureContentRef.current) {
+      tablatureContentRef.current.classList.add('no-transition');
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    
+    const newOffset = e.clientX - startX;
+    setScrollOffset(newOffset);
+    
+    if (dragTimeout.current) {
+      clearTimeout(dragTimeout.current);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (tablatureContentRef.current) {
+      tablatureContentRef.current.classList.remove('no-transition');
+    }
+
+    if (dragTimeout.current) {
+      clearTimeout(dragTimeout.current);
+    }
+    dragTimeout.current = setTimeout(() => {
+      setIsManualScrolling(false);
+    }, 2000);
+  };
+
+  // Handle touch events for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].clientX - scrollOffset);
+    if (tablatureContentRef.current) {
+      tablatureContentRef.current.classList.add('no-transition');
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    
+    const newOffset = e.touches[0].clientX - startX;
+    setScrollOffset(newOffset);
+    setIsManualScrolling(true);
+    
+    if (dragTimeout.current) {
+      clearTimeout(dragTimeout.current);
+    }
+    
+    dragTimeout.current = setTimeout(() => {
+      setIsManualScrolling(false);
+    }, 2000);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    if (tablatureContentRef.current) {
+      tablatureContentRef.current.classList.remove('no-transition');
+    }
+  };
+
+  // Calculate the required width for the entire song
+  const contentWidth = useMemo(() => {
+    const minWidth = 1000; // Minimum width in pixels
+    const durationBasedWidth = songDuration * basePixelsPerBeat;
+    return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
+  }, [songDuration]);
+
+  // Update getLoopMarkerPosition to be relative to the start of the content
+  const getLoopMarkerPosition = (time: number) => {
+    return time * basePixelsPerBeat;
+  };
+
   return (
-    <div className="tablature-player">
+    <div className="tablature-player" ref={containerRef}>
       <Controls
         isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
+        onPlay={handlePlay}
         onStop={handleStop}
         currentTime={currentTime}
         duration={songDuration}
-        tempo={bpm}
-        onTempoChange={handleBpmChange}
         guitarType={guitarType}
-        onGuitarTypeChange={handleGuitarTypeChange}
+        onGuitarChange={setGuitarType}
+        bpm={bpm}
+        onBpmChange={(newBpm) => {
+          setBpm(newBpm);
+          Tone.Transport.bpm.value = newBpm;
+        }}
         metronomeEnabled={metronomeEnabled}
-        onMetronomeChange={handleMetronomeChange}
+        onMetronomeChange={setMetronomeEnabled}
         isMuted={isMuted}
-        onMuteChange={handleMuteChange}
+        onMuteChange={setIsMuted}
+        loopEnabled={loopEnabled}
+        onLoopChange={setLoopEnabled}
+        loopStart={loopStart}
+        loopEnd={loopEnd}
+        onLoopPointsChange={handleLoopPointsChange}
       />
       
       <VexStaffDisplay
@@ -445,27 +636,69 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         timeSignature={originalSong.timeSignature}
       />
       
-      <div className="tablature-display">
-        <div className="grid-lines">
-          {renderGridLines()}
+      <div 
+        className={`tablature-display ${isDragging ? 'dragging' : ''}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div 
+          ref={tablatureContentRef}
+          className={`tablature-content ${isDragging ? 'no-transition' : ''}`}
+          style={{ 
+            transform: getContentTransform(),
+            width: `${contentWidth}px`
+          }}
+        >
+          <div className="grid-lines">
+            {renderGridLines()}
+          </div>
+          
+          {loopEnabled && (
+            <>
+              <div 
+                className="loop-marker loop-start-marker"
+                style={{ left: `${getLoopMarkerPosition(loopStart)}px` }}
+              />
+              <div 
+                className="loop-marker loop-end-marker"
+                style={{ left: `${getLoopMarkerPosition(loopEnd)}px` }}
+              />
+              <div 
+                className="loop-region"
+                style={{
+                  left: `${getLoopMarkerPosition(loopStart)}px`,
+                  width: `${getLoopMarkerPosition(loopEnd) - getLoopMarkerPosition(loopStart)}px`
+                }}
+              />
+            </>
+          )}
+          
+          <div className="strings-container" ref={notesContainerRef}>
+            {[1, 2, 3, 4, 5, 6].map(stringNum => (
+              <GuitarString key={stringNum} stringNumber={stringNum} />
+            ))}
+          </div>
+          
+          <div className="notes-container">
+            {visibleNotes.map((note, index) => (
+              <NoteElement 
+                key={`${note.string}-${note.time}-${index}`}
+                note={note}
+                currentTime={currentTime}
+              />
+            ))}
+          </div>
         </div>
+
+        <div className="trigger-line" />
         
-        <div className="trigger-line"></div>
-        
-        <div className="strings-container">
-          {[6, 5, 4, 3, 2, 1].map(stringNum => (
-            <GuitarString key={stringNum} stringNumber={stringNum} />
-          ))}
-        </div>
-        
-        <div className="notes-container" ref={notesContainerRef}>
-          {visibleNotes.map((note, index) => (
-            <NoteElement 
-              key={`${note.string}-${note.time}-${index}`}
-              note={note}
-              currentTime={currentTime}
-            />
-          ))}
+        <div className={`manual-scroll-indicator ${isManualScrolling ? 'visible' : ''}`}>
+          Manual Scrolling
         </div>
       </div>
     </div>

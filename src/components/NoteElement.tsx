@@ -15,83 +15,74 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Set up resize observer to handle container width changes
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current.closest('.tablature-display');
-    if (!container) return;
-
-    setContainerWidth(container.clientWidth);
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
+    const updateContainerWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
       }
-    });
-
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
     };
+
+    // Initial setup
+    updateContainerWidth();
+
+    // Add a small delay to ensure the container is properly rendered
+    const timeoutId = setTimeout(updateContainerWidth, 100);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
-  // Calculate position and width based on time and duration
-  const noteStyle = useMemo(() => {
-    // Get the trigger line position in pixels (50% of container width)
-    const triggerLinePosition = containerWidth * 0.5;
-    
-    // Calculate the time difference between the note's time and current time
-    const timeDiff = note.time - currentTime;
-    
-    // Use fixed pixel units instead of viewport units for consistent sizing
-    const basePixelsPerBeat = 100; // 100px per beat
-    
-    // Calculate width based on note duration in beats
-    const width = note.duration * basePixelsPerBeat;
-    
-    // Calculate position based on time in beats
-    const xPosition = triggerLinePosition + (timeDiff * basePixelsPerBeat);
-    
-    // Calculate vertical position based on string number
-    const stringHeight = 66.67;
-    const yPosition = (note.string - 1) * stringHeight + (stringHeight / 2);
-
-    // Calculate opacity based on note duration and current time
-    let opacity = 1;
-    const noteEndTime = note.time + note.duration;
-    if (currentTime > noteEndTime) {
-      opacity = Math.max(0, 1 - (currentTime - noteEndTime));
-    }
-    
-    return {
-      left: `${xPosition}px`,
-      top: `${yPosition}px`,
-      width: `${width}px`,
-      backgroundColor: note.color || '#61dafb',
-      opacity,
-      cursor: 'pointer',
-    };
-  }, [note.time, note.duration, note.string, note.color, currentTime, containerWidth]);
-  
   // Determine if the note is active (being played)
   const isActive = useMemo(() => {
-    // Note is active when current time is within its duration
     return currentTime >= note.time && currentTime <= note.time + note.duration;
   }, [note.time, note.duration, currentTime]);
   
   // Determine if the note is past (already played)
   const isPast = useMemo(() => {
-    return note.time < currentTime;
-  }, [note.time, currentTime]);
-  
-  // Calculate progress percentage
-  const progressPercentage = useMemo(() => {
-    if (currentTime <= note.time) return 0;
-    if (currentTime >= note.time + note.duration) return 100;
-    return ((currentTime - note.time) / note.duration) * 100;
+    return currentTime > note.time + note.duration;
   }, [note.time, note.duration, currentTime]);
+
+  // Calculate position and width based on time and duration
+  const noteStyle = useMemo(() => {
+    const basePixelsPerBeat = 60; // Match the parent component
+    
+    // Calculate width based on note duration in beats
+    const width = note.duration * basePixelsPerBeat;
+    
+    // Calculate position based on time in beats
+    const xPosition = note.time * basePixelsPerBeat + 20; // Add left padding
+    
+    // Calculate vertical position based on string number (1-6)
+    // With flex layout, we need to calculate the position differently
+    // The container height is 280px with 40px padding top and bottom, leaving 200px for 6 strings
+    // Each string position is evenly distributed across 200px (the string-container's content area)
+    const containerHeight = 280;
+    const paddingTop = 40;
+    const contentHeight = containerHeight - (paddingTop * 2);
+    const stringSpacing = contentHeight / 5; // 5 spaces for 6 strings
+    const yPosition = paddingTop + ((note.string - 1) * stringSpacing);
+    
+    return {
+      left: `${xPosition}px`,
+      top: `${yPosition}px`,
+      width: `${width}px`,
+      height: '30px',
+      backgroundColor: isActive ? '#61dafb' : 'rgba(97, 218, 251, 0.5)',
+      opacity: isPast ? 0.5 : 1,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: '4px',
+      position: 'absolute' as const,
+      transform: 'translateY(-15px)', // Center vertically on the string
+      zIndex: isActive ? 2 : 1,
+      color: '#000',
+      fontWeight: 'bold',
+      fontSize: '14px',
+      cursor: 'default',
+      userSelect: 'none' as const,
+      boxShadow: isActive ? '0 0 8px rgba(97, 218, 251, 0.8)' : 'none',
+    };
+  }, [note.time, note.duration, note.string, isActive, isPast]);
 
   // Handle click to play note
   const handleClick = useCallback(() => {
@@ -113,7 +104,7 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
       {isActive && (
         <div 
           className="progress-indicator" 
-          style={{ width: `${progressPercentage}%` }}
+          style={{ width: `${((currentTime - note.time) / note.duration) * 100}%` }}
         />
       )}
     </div>

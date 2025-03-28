@@ -6,19 +6,18 @@ interface GuitarStringProps {
 }
 
 const GuitarString: React.FC<GuitarStringProps> = ({ stringNumber }) => {
-  // Calculate string thickness based on string number (1-6)
-  // String 1 is thinnest, String 6 is thickest
-  const thickness = 1 + (stringNumber - 1) * 0.5;
-  
-  const tunings = ["E2", "A2", "D3", "G3", "B4", "E4"];
+  // Standard tuning notes from highest to lowest
+  const tunings = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
   const tuning = tunings[stringNumber - 1];
   
   return (
     <div 
       className="guitar-string"
       style={{ 
-        height: `${thickness}px`,
-        opacity: 0.7 + (stringNumber * 0.05)
+        height: '2px',
+        backgroundColor: '#000',  // Make strings black
+        opacity: 0.9,  // Make strings more visible
+        boxShadow: '0 0 2px rgba(0, 0, 0, 0.5)'  // Add subtle glow
       }}
       data-string={stringNumber}
     >
