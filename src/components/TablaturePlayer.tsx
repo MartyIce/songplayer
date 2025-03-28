@@ -42,6 +42,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [startX, setStartX] = useState(0);
   const [isManualScrolling, setIsManualScrolling] = useState(false);
+  const [isResetAnimating, setIsResetAnimating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Refs
@@ -119,11 +120,26 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     if (loopEnabled) {
       const loopEndTime = loopEnd * (60 / Tone.Transport.bpm.value);
       const loopId = Tone.Transport.schedule(time => {
+        // Signal that we're resetting for animation purposes
+        setIsResetAnimating(true);
+        
         // Reset to loop start point
         setCurrentTime(loopStart);
         // Set Transport position to loop start
         const loopStartSeconds = loopStart * (60 / Tone.Transport.bpm.value);
         Tone.Transport.seconds = loopStartSeconds;
+        
+        // Force an immediate update of visible notes and scroll position
+        if (containerRef.current) {
+          const containerWidth = containerRef.current.clientWidth;
+          setScrollOffset(containerWidth / 2 - (loopStart * basePixelsPerBeat));
+        }
+        
+        // Clear the reset animation flag after a short delay
+        setTimeout(() => {
+          setIsResetAnimating(false);
+        }, 50);
+        
         // Reschedule notes from loop start
         scheduleNotes(loopStart);
       }, loopEndTime);
@@ -133,34 +149,54 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   
   // Update visible notes based on current time
   useEffect(() => {
+    // If we're in the middle of a loop reset animation, don't update the notes
+    // This prevents flickering during the loop transition
+    if (isResetAnimating) {
+      return;
+    }
+    
     // Show notes within a reasonable window to avoid too many notes on screen at once
     const visibleTimeWindowBefore = 2; // 2 seconds before current time
     const visibleTimeWindowAfter = 8;  // 8 seconds after current time
     
     const visible = processedSong.notes.filter(
       (note: Note) => {
-        // Skip notes outside loop boundaries when looping is enabled and playing
+        // Handle looping
         if (loopEnabled && isPlaying) {
-          // If the note is past the loop end, don't show it
-          if (note.time > loopEnd) {
-            return false;
+          // Handle visualization around loop points
+          if (currentTime > loopEnd - 1 || currentTime < loopStart + 1) {
+            // Around loop boundaries, we have special cases
+            
+            // Only include notes within the loop region
+            if (note.time < loopStart || note.time > loopEnd) {
+              return false;
+            }
+            
+            // When near the end of the loop, also show notes from the start
+            // to prepare for the visual transition
+            if (currentTime > loopEnd - 1) {
+              if (note.time >= loopStart && note.time < loopStart + visibleTimeWindowAfter) {
+                return true;
+              }
+            }
+          } else {
+            // Regular case - only show notes within the loop and current viewport
+            if (note.time > loopEnd) {
+              return false;
+            }
           }
         }
         
-        // A note is visible if:
-        // 1. It's about to be played (upcoming)
-        // 2. It's currently being played
-        // 3. It has just finished playing
-        
-        // Include notes that are about to be played
+        // Standard visibility criteria
+        // Include notes that are about to be played (upcoming)
         const isUpcoming = note.time > currentTime - visibleTimeWindowBefore && 
                           note.time < currentTime + visibleTimeWindowAfter;
         
-        // Include notes that are currently being played (any part of the note is crossing the current time)
+        // Include notes that are currently being played
         const isNoteActive = note.time <= currentTime && 
                           note.time + note.duration > currentTime;
         
-        // Include notes that have just finished playing (within the last 1 second)
+        // Include notes that have just finished playing
         const justFinished = note.time + note.duration >= currentTime - 1 && 
                              note.time + note.duration <= currentTime;
         
@@ -169,7 +205,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     ) as StringFretNote[];
     
     setVisibleNotes(visible);
-  }, [currentTime, processedSong.notes, isPlaying, loopEnabled, loopEnd]);
+  }, [currentTime, processedSong.notes, isPlaying, loopEnabled, loopStart, loopEnd, isResetAnimating]);
   
   // Initialize position
   useEffect(() => {
@@ -215,9 +251,16 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   useEffect(() => {
     let animationFrame: number;
     let lastTime = 0;
+    let lastKnownTime = 0;
 
     const updateTime = (timestamp: number) => {
       if (isPlaying) {
+        // Skip updates during the reset animation to prevent visual glitches
+        if (isResetAnimating) {
+          animationFrame = requestAnimationFrame(updateTime);
+          return;
+        }
+        
         const delta = timestamp - lastTime;
         lastTime = timestamp;
 
@@ -228,13 +271,29 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
           if (transportTimeInBeats >= loopEnd) {
             // Don't update the time past loop end - the loopId in scheduleNotes will handle
             // jumping back to loop start
+            animationFrame = requestAnimationFrame(updateTime);
             return;
+          }
+          
+          // Check if we've jumped backwards (loop restart)
+          if (lastKnownTime > transportTimeInBeats + 1) {
+            // Force-update the UI to reflect the loop restart
+            setVisibleNotes([]); // Clear notes for a clean restart
+            
+            // Update scroll position for loop start
+            if (containerRef.current) {
+              const containerWidth = containerRef.current.clientWidth;
+              setScrollOffset(containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat));
+            }
           }
         } else if (transportTimeInBeats >= songDuration) {
           handleStop();
           return;
         }
 
+        // Store the current time for the next frame
+        lastKnownTime = transportTimeInBeats;
+        
         setCurrentTime(transportTimeInBeats);
         
         if (!isManualScrolling && containerRef.current) {
@@ -248,6 +307,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     };
 
     if (isPlaying) {
+      lastKnownTime = currentTime;
       animationFrame = requestAnimationFrame(updateTime);
     }
 
@@ -256,7 +316,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd]);
+  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, loopStart, isResetAnimating]);
 
   // Handle guitar type change
   const handleGuitarTypeChange = async (type: GuitarType) => {
@@ -541,10 +601,31 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
 
   // Handle loop points change
   const handleLoopPointsChange = (start: number, end: number) => {
+    // Store previous values
+    const previousStart = loopStart;
+    const previousEnd = loopEnd;
+    
+    // Update loop points
     setLoopStart(start);
     setLoopEnd(end);
+    
     if (isPlaying && loopEnabled) {
-      scheduleNotes(currentTime);
+      // If we're playing and the current time is outside the new loop boundaries,
+      // move playback position to the start of the loop
+      if (currentTime < start || currentTime > end) {
+        setCurrentTime(start);
+        Tone.Transport.seconds = start * (60 / Tone.Transport.bpm.value);
+        
+        // Update scroll position
+        if (containerRef.current) {
+          const containerWidth = containerRef.current.clientWidth;
+          setScrollOffset(containerWidth / 2 - (start * basePixelsPerBeat));
+        }
+      }
+      
+      // Reschedule the notes with the new loop boundaries
+      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+      scheduleNotes(currentTime < start ? start : currentTime);
     }
   };
 
