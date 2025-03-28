@@ -119,8 +119,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     if (loopEnabled) {
       const loopEndTime = loopEnd * (60 / Tone.Transport.bpm.value);
       const loopId = Tone.Transport.schedule(time => {
+        // Reset to loop start point
         setCurrentTime(loopStart);
-        Tone.Transport.position = loopStart;
+        // Set Transport position to loop start
+        const loopStartSeconds = loopStart * (60 / Tone.Transport.bpm.value);
+        Tone.Transport.seconds = loopStartSeconds;
+        // Reschedule notes from loop start
         scheduleNotes(loopStart);
       }, loopEndTime);
       scheduledNotes.current.push(loopId);
@@ -135,6 +139,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     
     const visible = processedSong.notes.filter(
       (note: Note) => {
+        // Skip notes outside loop boundaries when looping is enabled and playing
+        if (loopEnabled && isPlaying) {
+          // If the note is past the loop end, don't show it
+          if (note.time > loopEnd) {
+            return false;
+          }
+        }
+        
         // A note is visible if:
         // 1. It's about to be played (upcoming)
         // 2. It's currently being played
@@ -145,19 +157,19 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
                           note.time < currentTime + visibleTimeWindowAfter;
         
         // Include notes that are currently being played (any part of the note is crossing the current time)
-        const isPlaying = note.time <= currentTime && 
+        const isNoteActive = note.time <= currentTime && 
                           note.time + note.duration > currentTime;
         
         // Include notes that have just finished playing (within the last 1 second)
         const justFinished = note.time + note.duration >= currentTime - 1 && 
                              note.time + note.duration <= currentTime;
         
-        return isUpcoming || isPlaying || justFinished;
+        return isUpcoming || isNoteActive || justFinished;
       }
     ) as StringFretNote[];
     
     setVisibleNotes(visible);
-  }, [currentTime, processedSong.notes]);
+  }, [currentTime, processedSong.notes, isPlaying, loopEnabled, loopEnd]);
   
   // Initialize position
   useEffect(() => {
@@ -211,16 +223,25 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
 
         const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
         
-        if (transportTimeInBeats >= songDuration) {
-          handleStop();
-        } else {
-          setCurrentTime(transportTimeInBeats);
-          if (!isManualScrolling && containerRef.current) {
-            const containerWidth = containerRef.current.clientWidth;
-            // Calculate offset to keep the current position at the trigger line
-            const newOffset = containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat);
-            setScrollOffset(newOffset);
+        if (loopEnabled) {
+          // Check if we're at or beyond the loop end point
+          if (transportTimeInBeats >= loopEnd) {
+            // Don't update the time past loop end - the loopId in scheduleNotes will handle
+            // jumping back to loop start
+            return;
           }
+        } else if (transportTimeInBeats >= songDuration) {
+          handleStop();
+          return;
+        }
+
+        setCurrentTime(transportTimeInBeats);
+        
+        if (!isManualScrolling && containerRef.current) {
+          const containerWidth = containerRef.current.clientWidth;
+          // Calculate offset to keep the current position at the trigger line
+          const newOffset = containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat);
+          setScrollOffset(newOffset);
         }
       }
       animationFrame = requestAnimationFrame(updateTime);
@@ -235,7 +256,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, isManualScrolling]);
+  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd]);
 
   // Handle guitar type change
   const handleGuitarTypeChange = async (type: GuitarType) => {
@@ -354,12 +375,18 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         Tone.Transport.seconds = 0;
       }
       
+      // If loop is enabled, start from loop start position
+      if (loopEnabled) {
+        setCurrentTime(loopStart);
+        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
+      }
+      
       // Initialize scroll position
       const containerWidth = containerRef.current.clientWidth;
       setScrollOffset(containerWidth / 2);
       
       // Schedule notes from current position
-      scheduleNotes(currentTime);
+      scheduleNotes(loopEnabled ? loopStart : currentTime);
       
       // Start transport
       Tone.Transport.start();
@@ -495,9 +522,15 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         Tone.Transport.seconds = 0;
       }
       
+      // If loop is enabled, start from loop start position
+      if (loopEnabled) {
+        setCurrentTime(loopStart);
+        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
+      }
+      
       // Schedule notes from current position if not muted
       if (!isMuted) {
-        scheduleNotes(currentTime);
+        scheduleNotes(loopEnabled ? loopStart : currentTime);
       }
       
       // Start transport

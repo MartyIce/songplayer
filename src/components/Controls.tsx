@@ -50,6 +50,14 @@ const Controls: React.FC<ControlsProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Calculate slider percentage for styling
+  const getSliderStyle = (value: number, min: number, max: number) => {
+    const percentage = ((value - min) / (max - min)) * 100;
+    return {
+      background: `linear-gradient(to right, #61dafb 0%, #61dafb ${percentage}%, #444 ${percentage}%, #444 100%)`
+    };
+  };
+
   const handleLoopStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStart = parseFloat(e.target.value);
     onLoopPointsChange(newStart, loopEnd);
@@ -96,6 +104,7 @@ const Controls: React.FC<ControlsProps> = ({
           max="200"
           value={bpm}
           onChange={(e) => onBpmChange(parseInt(e.target.value))}
+          style={getSliderStyle(bpm, 40, 200)}
         />
       </div>
 
@@ -139,6 +148,7 @@ const Controls: React.FC<ControlsProps> = ({
               step="0.1"
               value={loopStart}
               onChange={(e) => onLoopPointsChange(parseFloat(e.target.value), loopEnd)}
+              style={getSliderStyle(loopStart, 0, duration)}
             />
           </div>
           <div className="loop-point-control">
@@ -150,6 +160,7 @@ const Controls: React.FC<ControlsProps> = ({
               step="0.1"
               value={loopEnd}
               onChange={(e) => onLoopPointsChange(loopStart, parseFloat(e.target.value))}
+              style={getSliderStyle(loopEnd, 0, duration)}
             />
           </div>
         </div>
