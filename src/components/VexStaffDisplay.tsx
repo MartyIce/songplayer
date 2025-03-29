@@ -51,13 +51,13 @@ const TUNING = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3']; // Standard guitar tuning (
 const ACTIVE_NOTE_COLOR = '#FF0000'; // Bright red for active notes
 const INACTIVE_NOTE_COLOR = '#FFFFFF'; // White for inactive notes
 const TIMING_TOLERANCE = 0.05; // 50ms tolerance for timing
-const SCROLL_SCALE = 56; // Scaling factor to synchronize with tab view
+const SCROLL_SCALE = 60; // Scaling factor to synchronize with tab view - aligned with basePixelsPerBeat in TablaturePlayer
 
 // Stave rendering constants
 const VISIBLE_WIDTH = 1000; // Visible width of the score display
 const STAVE_LEFT_PADDING = 20; // Padding to the left of the stave
 const CLEF_WIDTH = 90; // Width needed for clef and time signature
-const MEASURE_WIDTH = 250; // Width per measure (adjusted for better spacing)
+const MEASURE_WIDTH = 240; // Width per measure (adjusted for better spacing and aligned with tablature)
 
 /**
  * Converts string/fret to pitch note
@@ -251,14 +251,33 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
   });
 }
 
+/**
+ * Custom function to manually position notes according to their time
+ */
+function positionNotes(groupedNotes: GroupedNote[], 
+                      voice: Voice, 
+                      stave: any): void {
+  // Get all tickables in the voice
+  const tickables = voice.getTickables();
+  
+  // Set position for each note based on its time
+  groupedNotes.forEach((group, index) => {
+    if (index < tickables.length) {
+      const tickable = tickables[index];
+      // Set the x position based on the same scale factor as grid lines
+      const xPos = CLEF_WIDTH + (group.time * SCROLL_SCALE);
+      tickable.setXShift(xPos - tickable.getX());
+    }
+  });
+}
+
 // Function to get X position for a note at a given time
 function getXPositionForTime(time: number, totalWidth: number, totalDuration: number): number {
-  // Calculate position based on time proportion
-  const clefWidth = 90; // Width for clef and time signature
-  const usableWidth = totalWidth - clefWidth - 40; // Subtract padding
+  // Calculate position based on time and scroll scale to match tablature
+  const clefWidth = CLEF_WIDTH; // Width for clef and time signature
   
-  // Position is proportional to time, but offset by clef width
-  return clefWidth + (time / totalDuration) * usableWidth;
+  // Position is based on time * scale factor, plus clef width offset
+  return clefWidth + (time * SCROLL_SCALE);
 }
 
 const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ 
@@ -341,6 +360,9 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         .joinVoices([voice])
         .formatToStave([voice], stave);
       
+      // Apply custom positioning based on note timing
+      positionNotes(groupedNotes, voice, stave);
+      
       stave.setBegBarType(Barline.type.SINGLE);
       stave.setEndBarType(Barline.type.END);
       
@@ -350,7 +372,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Draw measure barlines
       let currentMeasureTime = beatsPerMeasure;
       while (currentMeasureTime < lastNoteTime) {
-        const x = getXPositionForTime(currentMeasureTime, calculatedWidth, lastNoteTime);
+        // Calculate position based on SCROLL_SCALE to align with tablature grid lines
+        const x = CLEF_WIDTH + (currentMeasureTime * SCROLL_SCALE);
         
         context.beginPath();
         context.moveTo(x, stave.getYForLine(0));
@@ -470,10 +493,10 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
         // Only auto-scroll if enough time has passed to avoid jerky scrolling
         const now = Date.now();
-        if (now - lastScrollTimeRef.current > 100) { // Throttle to prevent too frequent scroll adjustments
+        if (now - lastScrollTimeRef.current > 50) { // Reduced throttle time for smoother scrolling
           const containerWidth = scrollContainerRef.current.clientWidth;
-          // Center the active note
-          scrollContainerRef.current.scrollLeft = activeNotePos - (containerWidth / 2);
+          // Center the active note - use direct scrollLeft calculation to match tablature
+          scrollContainerRef.current.scrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
           lastScrollTimeRef.current = now;
         }
       }
