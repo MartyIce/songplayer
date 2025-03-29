@@ -161,6 +161,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     
     const visible = processedSong.notes.filter(
       (note: Note) => {
+        // Filter out rest notes - they should not be displayed in the tablature
+        if ('rest' in note) {
+          return false;
+        }
+
         // Handle looping
         if (loopEnabled && isPlaying) {
           // Handle visualization around loop points
