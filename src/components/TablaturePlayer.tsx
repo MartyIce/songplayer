@@ -748,6 +748,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         notes={originalSong.notes}
         currentTime={currentTime}
         timeSignature={originalSong.timeSignature}
+        loopEnabled={loopEnabled}
+        loopStart={loopStart}
+        loopEnd={loopEnd}
       />
       
       <div 

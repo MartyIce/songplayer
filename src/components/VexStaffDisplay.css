@@ -121,4 +121,32 @@
 #vf-container svg .vf-stavenote[stroke="blue"] text {
   fill: blue !important;
   stroke: none !important;
+}
+
+/* Loop marker styles for sheet music - similar to tablature player */
+.sheet-loop-marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  z-index: 9;
+}
+
+.sheet-loop-start-marker {
+  background-color: #4CAF50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+}
+
+.sheet-loop-end-marker {
+  background-color: #F44336;
+  box-shadow: 0 0 10px rgba(244, 67, 54, 0.7);
+}
+
+.sheet-loop-region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-color: rgba(97, 218, 251, 0.1);
+  pointer-events: none;
+  z-index: 8;
 } 

@@ -8,6 +8,9 @@ interface VexStaffDisplayProps {
   notes: Note[];
   currentTime: number;
   timeSignature: [number, number];
+  loopEnabled?: boolean;
+  loopStart?: number;
+  loopEnd?: number;
 }
 
 interface GroupedNote {
@@ -54,7 +57,7 @@ const SCROLL_SCALE = 56; // Scaling factor to synchronize with tab view
 const VISIBLE_WIDTH = 1000; // Visible width of the score display
 const STAVE_LEFT_PADDING = 20; // Padding to the left of the stave
 const CLEF_WIDTH = 90; // Width needed for clef and time signature
-const MEASURE_WIDTH = 200; // Width per measure (adjusted for better spacing)
+const MEASURE_WIDTH = 250; // Width per measure (adjusted for better spacing)
 
 /**
  * Converts string/fret to pitch note
@@ -258,7 +261,14 @@ function getXPositionForTime(time: number, totalWidth: number, totalDuration: nu
   return clefWidth + (time / totalDuration) * usableWidth;
 }
 
-const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, timeSignature }) => {
+const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ 
+  notes, 
+  currentTime, 
+  timeSignature,
+  loopEnabled = false,
+  loopStart = 0,
+  loopEnd = 0
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const factoryRef = useRef<Factory | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -456,27 +466,19 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         });
       }
       
-      // Scrolling logic - only if not in manual scroll mode
-      if (position !== null && !manualScrollMode) {
-        const containerWidth = scrollContainerRef.current.clientWidth;
-        const middlePoint = containerWidth / 2;
-        
-        // If the active note is past the middle or we're no longer in initial play
-        if (position > middlePoint || !isInitialPlay) {
-          setIsInitialPlay(false);
-          
-          // Calculate the scroll position to center the active note
-          const scrollPos = position - middlePoint;
-          
-          // Smooth scrolling with animation
-          scrollContainerRef.current.scrollTo({
-            left: Math.max(0, scrollPos),
-            behavior: 'smooth'
-          });
+      // If in auto-scroll mode, center on current playback position
+      if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
+        // Only auto-scroll if enough time has passed to avoid jerky scrolling
+        const now = Date.now();
+        if (now - lastScrollTimeRef.current > 100) { // Throttle to prevent too frequent scroll adjustments
+          const containerWidth = scrollContainerRef.current.clientWidth;
+          // Center the active note
+          scrollContainerRef.current.scrollLeft = activeNotePos - (containerWidth / 2);
+          lastScrollTimeRef.current = now;
         }
       }
     }
-  }, [currentTime, notes, totalWidth, totalDuration, isInitialPlay, manualScrollMode]);
+  }, [currentTime, notes, totalWidth, totalDuration, isInitialPlay, manualScrollMode, isDragging, timeSignature]);
 
   // Mouse event handlers for dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -525,6 +527,11 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
     setManualScrollMode(!manualScrollMode);
   }, [manualScrollMode]);
 
+  // Helper to get the X position for loop markers
+  const getLoopMarkerPosition = (time: number): number => {
+    return getXPositionForTime(time, totalWidth, totalDuration);
+  };
+
   return (
     <div className="vex-staff-display">
       <div 
@@ -540,6 +547,28 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ notes, currentTime, t
         onDoubleClick={handleDoubleClick}
       >
         <div id="vf-container" ref={containerRef} />
+        
+        {/* Loop markers - similar to those in TablaturePlayer */}
+        {loopEnabled && (
+          <>
+            <div 
+              className="sheet-loop-marker sheet-loop-start-marker"
+              style={{ left: `${getLoopMarkerPosition(loopStart)}px` }}
+            />
+            <div 
+              className="sheet-loop-marker sheet-loop-end-marker"
+              style={{ left: `${getLoopMarkerPosition(loopEnd)}px` }}
+            />
+            <div 
+              className="sheet-loop-region"
+              style={{
+                left: `${getLoopMarkerPosition(loopStart)}px`,
+                width: `${getLoopMarkerPosition(loopEnd) - getLoopMarkerPosition(loopStart)}px`
+              }}
+            />
+          </>
+        )}
+        
         {manualScrollMode && (
           <div className="manual-scroll-indicator">Manual Scroll</div>
         )}
