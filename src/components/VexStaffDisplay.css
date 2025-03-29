@@ -19,6 +19,8 @@
   display: flex;
   align-items: center;
   cursor: grab; /* Show a grab cursor to indicate draggability */
+  will-change: transform, scroll-position; /* Hardware acceleration hint */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .staff-scroll-container:active {
@@ -42,6 +44,12 @@
 /* Basic container styles - width now handled dynamically in component */
 #vf-container {
   height: 100%;
+  will-change: transform; /* Optimize rendering performance */
+  transition: transform 0.1s ease-out; /* Add smooth transition by default */
+}
+
+#vf-container.no-transition {
+  transition: none !important; /* Remove transition during active dragging */
 }
 
 /* Make sure VexFlow elements are visible */

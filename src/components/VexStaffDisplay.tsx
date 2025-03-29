@@ -300,6 +300,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -491,16 +492,20 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       // If in auto-scroll mode, center on current playback position
       if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
-        // Only auto-scroll if enough time has passed to avoid jerky scrolling
-        const now = Date.now();
-        if (now - lastScrollTimeRef.current > 50) { // Reduced throttle time for smoother scrolling
-          const containerWidth = scrollContainerRef.current.clientWidth;
-          // Center the active note - use direct scrollLeft calculation to match tablature
-          scrollContainerRef.current.scrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
-          lastScrollTimeRef.current = now;
-        }
+        const containerWidth = scrollContainerRef.current.clientWidth;
+        const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+        
+        // Use direct positioning to maintain synchronization with tab view
+        scrollContainerRef.current.scrollLeft = targetScrollLeft;
       }
     }
+    
+    // Clean up animation frame on unmount or dependency change
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, [currentTime, notes, totalWidth, totalDuration, isInitialPlay, manualScrollMode, isDragging, timeSignature]);
 
   // Mouse event handlers for dragging
@@ -510,18 +515,32 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       setDragStartX(e.clientX);
       setScrollStartX(scrollContainerRef.current.scrollLeft);
       setManualScrollMode(true);
+      
+      // Add no-transition class for immediate response during dragging
+      if (containerRef.current) {
+        containerRef.current.classList.add('no-transition');
+      }
     }
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging && scrollContainerRef.current) {
+      e.preventDefault(); // Prevent text selection during drag
       const dx = e.clientX - dragStartX;
-      scrollContainerRef.current.scrollLeft = scrollStartX - dx;
+      const newScrollLeft = scrollStartX - dx;
+      
+      // Direct DOM manipulation for immediate response and synchronization
+      scrollContainerRef.current.scrollLeft = newScrollLeft;
     }
   }, [isDragging, dragStartX, scrollStartX]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    
+    // Remove no-transition class when dragging ends
+    if (containerRef.current) {
+      containerRef.current.classList.remove('no-transition');
+    }
   }, []);
 
   // Touch event handlers for mobile dragging
@@ -531,18 +550,31 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       setDragStartX(e.touches[0].clientX);
       setScrollStartX(scrollContainerRef.current.scrollLeft);
       setManualScrollMode(true);
+      
+      // Add no-transition class for immediate response during dragging
+      if (containerRef.current) {
+        containerRef.current.classList.add('no-transition');
+      }
     }
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (isDragging && scrollContainerRef.current && e.touches[0]) {
       const dx = e.touches[0].clientX - dragStartX;
-      scrollContainerRef.current.scrollLeft = scrollStartX - dx;
+      const newScrollLeft = scrollStartX - dx;
+      
+      // Direct DOM manipulation for immediate response and synchronization
+      scrollContainerRef.current.scrollLeft = newScrollLeft;
     }
   }, [isDragging, dragStartX, scrollStartX]);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
+    
+    // Remove no-transition class when dragging ends
+    if (containerRef.current) {
+      containerRef.current.classList.remove('no-transition');
+    }
   }, []);
 
   // Toggle between auto-scroll and manual mode on double click
