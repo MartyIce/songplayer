@@ -46,14 +46,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Refs
-  const animationRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number>(0);
   const synth = useRef<Tone.PolySynth | null>(null);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const tablatureContentRef = useRef<HTMLDivElement>(null);
   const dragTimeout = useRef<NodeJS.Timeout>();
   const scheduledNotes = useRef<number[]>([]);
-  const metronomeRef = useRef<Tone.Player | null>(null);
   const metronomePart = useRef<Tone.Part | null>(null);
   
   // Calculate the total duration of the song in beats
@@ -62,6 +59,22 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     const lastNote = [...processedSong.notes].sort((a, b) => (b.time + b.duration) - (a.time + a.duration))[0];
     return lastNote.time + lastNote.duration;
   }, [processedSong.notes]);
+  
+  // Define handleStop first since it's used in updateTime
+  const handleStop = useCallback(() => {
+    // Stop transport and clear all scheduled notes
+    Tone.Transport.stop();
+    scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+    scheduledNotes.current = [];
+    
+    // Stop any currently playing notes
+    guitarSampler.stopAllNotes();
+    
+    // Reset position
+    Tone.Transport.seconds = 0;
+    setCurrentTime(0);
+    setIsPlaying(false);
+  }, []);
   
   // Initialize the synth
   useEffect(() => {
@@ -92,8 +105,30 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     };
   }, [song, songDuration]);
   
-  // Schedule all notes when starting playback
-  const scheduleNotes = (startBeat = 0) => {
+  // Play a note using the guitar sampler
+  const playNote = useCallback((note: Note) => {
+    if (!guitarSampler.isReady() || isMuted) return;
+
+    let noteToPlay: string | null = null;
+
+    if ('note' in note) {
+      // PitchNote - direct note name
+      noteToPlay = note.note;
+    } else if ('string' in note) {
+      // StringFretNote - calculate from string and fret
+      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
+      const stringIndex = note.string - 1;
+      const baseNote = baseNotes[stringIndex];
+      noteToPlay = Tone.Frequency(baseNote).transpose(note.fret).toNote();
+    }
+
+    if (noteToPlay) {
+      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration * (60 / Tone.Transport.bpm.value));
+    }
+  }, [isMuted]);
+
+  // Define scheduleNotes with useCallback before it's used
+  const scheduleNotes = useCallback((startBeat = 0) => {
     // Clear any previously scheduled notes
     scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
     scheduledNotes.current = [];
@@ -145,7 +180,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       }, loopEndTime);
       scheduledNotes.current.push(loopId);
     }
-  };
+  }, [loopEnabled, loopEnd, loopStart, isMuted, basePixelsPerBeat, processedSong.notes, playNote]);
   
   // Update visible notes based on current time
   useEffect(() => {
@@ -250,7 +285,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       const containerWidth = containerRef.current.clientWidth;
       setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
     }
-  }, [isPlaying, currentTime]);
+  }, [isPlaying, currentTime, basePixelsPerBeat]);
 
   // Update current time based on Transport position
   useEffect(() => {
@@ -266,7 +301,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
           return;
         }
         
-        const delta = timestamp - lastTime;
+        // Not using the delta, but keeping it for future debugging
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _ = timestamp - lastTime;
         lastTime = timestamp;
 
         const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
@@ -321,25 +358,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, loopStart, isResetAnimating]);
-
-  // Handle guitar type change
-  const handleGuitarTypeChange = async (type: GuitarType) => {
-    const wasPlaying = isPlaying;
-    if (wasPlaying) {
-      handlePause();
-    }
-    
-    setGuitarType(type);
-    await guitarSampler.switchGuitar(type);
-    
-    if (wasPlaying) {
-      handlePlay();
-    }
-  };
+  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, loopStart, isResetAnimating, basePixelsPerBeat, currentTime, handleStop]);
 
   // Handle mute change
-  const handleMuteChange = (muted: boolean) => {
+  const handleMuteChange = useCallback((muted: boolean) => {
     setIsMuted(muted);
     
     // Clear all currently scheduled notes
@@ -353,30 +375,79 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       // If unmuting while playing, schedule notes from current position
       scheduleNotes(currentTime);
     }
-  };
+  }, [isPlaying, currentTime, scheduleNotes]);
 
-  // Play a note using the guitar sampler
-  const playNote = (note: Note) => {
-    if (!guitarSampler.isReady() || isMuted) return;
-
-    let noteToPlay: string | null = null;
-
-    if ('note' in note) {
-      // PitchNote - direct note name
-      noteToPlay = note.note;
-    } else if ('string' in note) {
-      // StringFretNote - calculate from string and fret
-      const baseNotes = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
-      const stringIndex = note.string - 1;
-      const baseNote = baseNotes[stringIndex];
-      noteToPlay = Tone.Frequency(baseNote).transpose(note.fret).toNote();
-    }
-
-    if (noteToPlay) {
-      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration * (60 / Tone.Transport.bpm.value));
-    }
-  };
+  // Handle metronome change
+  const handleMetronomeChange = useCallback((enabled: boolean) => {
+    setMetronomeEnabled(enabled);
+  }, []);
   
+  // Handle pause button
+  const handlePause = useCallback(() => {
+    if (isPlaying) {
+      Tone.Transport.pause();
+      setIsPlaying(false);
+    }
+  }, [isPlaying]);
+  
+  // Handle play button
+  const handlePlay = useCallback(async () => {
+    // Ensure container is ready before playing
+    if (!containerRef.current) {
+      console.warn('Container not ready yet');
+      return;
+    }
+
+    await Tone.start();
+    if (!isPlaying) {
+      // Reset if at end
+      if (currentTime >= songDuration) {
+        setCurrentTime(0);
+        Tone.Transport.seconds = 0;
+      }
+      
+      // If loop is enabled, start from loop start position
+      if (loopEnabled) {
+        setCurrentTime(loopStart);
+        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
+      }
+      
+      // Initialize scroll position
+      const containerWidth = containerRef.current.clientWidth;
+      setScrollOffset(containerWidth / 2);
+      
+      // Schedule notes from current position
+      scheduleNotes(loopEnabled ? loopStart : currentTime);
+      
+      // Start transport
+      Tone.Transport.start();
+      setIsPlaying(true);
+    }
+  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes]);
+  
+  const handlePlayPause = useCallback(async () => {
+    if (isPlaying) {
+      handlePause();
+    } else {
+      handlePlay();
+    }
+  }, [isPlaying, handlePause, handlePlay]);
+  
+  // Handle guitar type change
+  const handleGuitarTypeChange = useCallback(async (type: GuitarType) => {
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
+      handlePause();
+    }
+    
+    setGuitarType(type);
+    await guitarSampler.switchGuitar(type);
+    
+    if (wasPlaying) {
+      handlePlay();
+    }
+  }, [isPlaying, handlePause, handlePlay]);
+
   // Generate grid lines for better visual reference
   const renderGridLines = () => {
     const gridLines = [];
@@ -424,67 +495,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     return gridLines;
   };
   
-  // Handle play button
-  const handlePlay = async () => {
-    // Ensure container is ready before playing
-    if (!containerRef.current) {
-      console.warn('Container not ready yet');
-      return;
-    }
-
-    await Tone.start();
-    if (!isPlaying) {
-      // Reset if at end
-      if (currentTime >= songDuration) {
-        setCurrentTime(0);
-        Tone.Transport.seconds = 0;
-      }
-      
-      // If loop is enabled, start from loop start position
-      if (loopEnabled) {
-        setCurrentTime(loopStart);
-        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
-      }
-      
-      // Initialize scroll position
-      const containerWidth = containerRef.current.clientWidth;
-      setScrollOffset(containerWidth / 2);
-      
-      // Schedule notes from current position
-      scheduleNotes(loopEnabled ? loopStart : currentTime);
-      
-      // Start transport
-      Tone.Transport.start();
-      setIsPlaying(true);
-    }
-  };
-  
-  // Handle pause button
-  const handlePause = () => {
-    if (isPlaying) {
-      Tone.Transport.pause();
-      setIsPlaying(false);
-    }
-  };
-  
-  // Handle stop button
-  const handleStop = () => {
-    // Stop transport and clear all scheduled notes
-    Tone.Transport.stop();
-    scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-    scheduledNotes.current = [];
-    
-    // Stop any currently playing notes
-    guitarSampler.stopAllNotes();
-    
-    // Reset position
-    Tone.Transport.seconds = 0;
-    setCurrentTime(0);
-    setIsPlaying(false);
-  };
-  
   // Handle BPM change
-  const handleBpmChange = (newBpm: number) => {
+  const handleBpmChange = useCallback((newBpm: number) => {
     setBpm(newBpm);
     
     // Store current position and state
@@ -509,8 +521,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       scheduleNotes(currentBeat);
       Tone.Transport.start();
     }
-  };
-  
+  }, [isPlaying, currentTime, scheduleNotes]);
+
   // Create a click synth for the metronome
   useEffect(() => {
     // Create a click synth with a short envelope
@@ -568,23 +580,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     };
   }, [metronomeEnabled, song.notes, song.timeSignature]);
 
-  const handleMetronomeChange = (enabled: boolean) => {
-    setMetronomeEnabled(enabled);
-  };
-
-  const handlePlayPause = async () => {
-    if (isPlaying) {
-      handlePause();
-    } else {
-      handlePlay();
-    }
-  };
-
   // Handle loop points change
-  const handleLoopPointsChange = (start: number, end: number) => {
-    // Store previous values
-    const previousStart = loopStart;
-    const previousEnd = loopEnd;
+  const handleLoopPointsChange = useCallback((start: number, end: number) => {
+    // No need to store previous values since they're not used
     
     // Update loop points
     setLoopStart(start);
@@ -608,14 +606,15 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
       scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
       scheduleNotes(currentTime < start ? start : currentTime);
     }
-  };
+  }, [isPlaying, loopEnabled, currentTime, basePixelsPerBeat, scheduleNotes]);
 
   // Calculate content transform based on scroll offset
   const getContentTransform = useCallback(() => {
     return `translateX(${scrollOffset}px)`;
   }, [scrollOffset]);
 
-  // Handle manual scrolling
+  // Handle manual scrolling - though not used directly in this file, it's available for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleScroll = useCallback((deltaX: number) => {
     setScrollOffset(prev => prev - deltaX);
   }, []);
@@ -708,16 +707,13 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         currentTime={currentTime}
         duration={songDuration}
         guitarType={guitarType}
-        onGuitarChange={setGuitarType}
+        onGuitarChange={handleGuitarTypeChange}
         bpm={bpm}
-        onBpmChange={(newBpm) => {
-          setBpm(newBpm);
-          Tone.Transport.bpm.value = newBpm;
-        }}
+        onBpmChange={handleBpmChange}
         metronomeEnabled={metronomeEnabled}
-        onMetronomeChange={setMetronomeEnabled}
+        onMetronomeChange={handleMetronomeChange}
         isMuted={isMuted}
-        onMuteChange={setIsMuted}
+        onMuteChange={handleMuteChange}
         loopEnabled={loopEnabled}
         onLoopChange={setLoopEnabled}
         loopStart={loopStart}

@@ -58,16 +58,6 @@ const Controls: React.FC<ControlsProps> = ({
     };
   };
 
-  const handleLoopStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStart = parseFloat(e.target.value);
-    onLoopPointsChange(newStart, loopEnd);
-  };
-
-  const handleLoopEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEnd = parseFloat(e.target.value);
-    onLoopPointsChange(loopStart, newEnd);
-  };
-
   return (
     <div className="controls">
       <div className="main-controls">

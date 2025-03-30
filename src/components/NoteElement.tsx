@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import { StringFretNote } from '../types/SongTypes';
 import './NoteElement.css';
@@ -13,13 +13,11 @@ const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
+  
   useEffect(() => {
+    // Keep the ref for potential future use, but no need to track width
     const updateContainerWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth);
-      }
+      // No need to set state that's not used
     };
 
     // Initial setup

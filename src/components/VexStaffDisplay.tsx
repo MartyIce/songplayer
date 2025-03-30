@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Factory, Voice, StaveNote, Formatter, Barline } from 'vexflow';
-import * as Tone from 'tone';
 import { Note, StringFretNote } from '../types/SongTypes';
 import './VexStaffDisplay.css';
 
@@ -48,9 +47,6 @@ octave lower at E2).
 
 // Constants
 const TUNING = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3']; // Standard guitar tuning (written pitch, high to low)
-const ACTIVE_NOTE_COLOR = '#FF0000'; // Bright red for active notes
-const INACTIVE_NOTE_COLOR = '#FFFFFF'; // White for inactive notes
-const TIMING_TOLERANCE = 0.05; // 50ms tolerance for timing
 const SCROLL_SCALE = 60; // Scaling factor to synchronize with tab view - aligned with basePixelsPerBeat in TablaturePlayer
 
 // Stave rendering constants
@@ -294,13 +290,10 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const [activeNotePos, setActiveNotePos] = useState<number | null>(null);
   const [totalWidth, setTotalWidth] = useState(1000);
   const [totalDuration, setTotalDuration] = useState(0);
-  const [isInitialPlay, setIsInitialPlay] = useState(true);
-  const lastScrollTimeRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
-  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -441,7 +434,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         factoryRef.current.reset();
       }
     };
-  }, [notes, timeSignature]);
+  }, [notes, timeSignature, currentTime]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {
@@ -499,14 +492,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         scrollContainerRef.current.scrollLeft = targetScrollLeft;
       }
     }
-    
-    // Clean up animation frame on unmount or dependency change
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [currentTime, notes, totalWidth, totalDuration, isInitialPlay, manualScrollMode, isDragging, timeSignature]);
+  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging]);
 
   // Mouse event handlers for dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -586,6 +572,14 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const getLoopMarkerPosition = (time: number): number => {
     return getXPositionForTime(time, totalWidth, totalDuration);
   };
+
+  // Auto-scrolling for following the music
+  useEffect(() => {
+    // No need to store animation frame ref since we're not using it yet
+    // This effect is for future auto-scrolling implementation
+    
+    // Clean up not needed since we're not using animation frames yet
+  }, [loopEnabled, loopStart, loopEnd, activeNotePos, manualScrollMode, currentTime]);
 
   return (
     <div className="vex-staff-display">

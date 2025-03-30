@@ -2,10 +2,6 @@ import React, { useState } from 'react';
 import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
 import { SongData } from './types/SongTypes';
-import sampleSong from './assets/sample-song.json';
-import whenTheSwallows from './assets/when-the-swallows.json';
-import whenTheSwallowsDetailed from './assets/when-the-swallows-detailed.json';
-import scarboroughFair from './assets/scarborough-fair.json';
 import giulianiStudy1 from './assets/giuliani-study-1.json';
 import { convertSongToStringFret } from './utils/noteConverter';
 
