@@ -47,7 +47,9 @@ export class GuitarSampler {
     }
 
     private getBaseUrl(type: GuitarType): string {
-        return `/samples/guitar-${type}/`;
+        // Use the PUBLIC_URL environment variable if available, otherwise fall back to /tabs
+        const basePath = process.env.PUBLIC_URL || '/tabs';
+        return `${basePath}/samples/guitar-${type}/`;
     }
 
     public async switchGuitar(type: GuitarType) {
