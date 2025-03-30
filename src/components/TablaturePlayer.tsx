@@ -573,34 +573,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
   };
 
   const handlePlayPause = async () => {
-    await Tone.start();
-    
-    if (Tone.Transport.state === 'started') {
-      // Pause playback
-      Tone.Transport.pause();
-      setIsPlaying(false);
+    if (isPlaying) {
+      handlePause();
     } else {
-      // Start or resume playback
-      if (currentTime >= songDuration) {
-        // Reset if at end
-        setCurrentTime(0);
-        Tone.Transport.seconds = 0;
-      }
-      
-      // If loop is enabled, start from loop start position
-      if (loopEnabled) {
-        setCurrentTime(loopStart);
-        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
-      }
-      
-      // Schedule notes from current position if not muted
-      if (!isMuted) {
-        scheduleNotes(loopEnabled ? loopStart : currentTime);
-      }
-      
-      // Start transport
-      Tone.Transport.start();
-      setIsPlaying(true);
+      handlePlay();
     }
   };
 
@@ -727,7 +703,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
     <div className="tablature-player" ref={containerRef}>
       <Controls
         isPlaying={isPlaying}
-        onPlay={handlePlay}
+        onPlay={handlePlayPause}
         onStop={handleStop}
         currentTime={currentTime}
         duration={songDuration}
