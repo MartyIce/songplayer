@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './Controls.css';
 import { GuitarType } from '../utils/GuitarSampler';
+import LoopPointAdjuster from './LoopPointAdjuster';
 
 interface ControlsProps {
   isPlaying: boolean;
@@ -53,6 +54,12 @@ const Controls: React.FC<ControlsProps> = ({
   onSongChange,
   isLoading,
 }) => {
+  // Add state for temporary input values
+  const [tempTimeStart, setTempTimeStart] = useState<string>('');
+  const [tempTimeEnd, setTempTimeEnd] = useState<string>('');
+  const [tempMeasureStart, setTempMeasureStart] = useState<string>('');
+  const [tempMeasureEnd, setTempMeasureEnd] = useState<string>('');
+
   // Format time as MM:SS
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -73,8 +80,26 @@ const Controls: React.FC<ControlsProps> = ({
     return `${measure}.${beat}`;
   };
 
-  // Handle time input change
+  // Handle time input change - now only updates temporary state
   const handleTimeInputChange = (value: string, isStart: boolean) => {
+    if (isStart) {
+      setTempTimeStart(value);
+    } else {
+      setTempTimeEnd(value);
+    }
+  };
+
+  // Handle measure.beat input change - now only updates temporary state
+  const handleMeasureInputChange = (value: string, isStart: boolean) => {
+    if (isStart) {
+      setTempMeasureStart(value);
+    } else {
+      setTempMeasureEnd(value);
+    }
+  };
+
+  // New handlers for input blur
+  const handleTimeInputBlur = (value: string, isStart: boolean) => {
     const newTime = parseFloat(value);
     if (!isNaN(newTime) && newTime >= 0 && newTime <= duration) {
       if (isStart) {
@@ -83,15 +108,24 @@ const Controls: React.FC<ControlsProps> = ({
         onLoopPointsChange(loopStart, newTime);
       }
     }
+    // Reset temp value to current valid value
+    if (isStart) {
+      setTempTimeStart(formatTimeDecimal(loopStart));
+    } else {
+      setTempTimeEnd(formatTimeDecimal(loopEnd));
+    }
   };
 
-  // Handle measure.beat input change
-  const handleMeasureInputChange = (value: string, isStart: boolean) => {
-    const [measureStr, beatStr] = value.split('.');
+  const handleMeasureInputBlur = (value: string, isStart: boolean) => {
+    // Split on first dot to separate measure from beat
+    const [measureStr, ...beatParts] = value.split('.');
+    // Rejoin any remaining parts with dots to handle decimal beats
+    const beatStr = beatParts.join('.');
+    
     const measure = parseInt(measureStr);
     const beat = parseFloat(beatStr);
     
-    if (!isNaN(measure) && !isNaN(beat) && measure > 0 && beat > 0) {
+    if (!isNaN(measure) && !isNaN(beat) && measure > 0) {
       const beatsPerMeasure = timeSignature[0];
       const newTime = (measure - 1) * beatsPerMeasure + (beat - 1);
       
@@ -103,7 +137,21 @@ const Controls: React.FC<ControlsProps> = ({
         }
       }
     }
+    // Reset temp value to current valid value
+    if (isStart) {
+      setTempMeasureStart(getMeasureTime(loopStart));
+    } else {
+      setTempMeasureEnd(getMeasureTime(loopEnd));
+    }
   };
+
+  // Initialize temp values when loop points change
+  useEffect(() => {
+    setTempTimeStart(formatTimeDecimal(loopStart));
+    setTempTimeEnd(formatTimeDecimal(loopEnd));
+    setTempMeasureStart(getMeasureTime(loopStart));
+    setTempMeasureEnd(getMeasureTime(loopEnd));
+  }, [loopStart, loopEnd]);
 
   // Calculate slider percentage for styling
   const getSliderStyle = (value: number, min: number, max: number) => {
@@ -111,6 +159,25 @@ const Controls: React.FC<ControlsProps> = ({
     return {
       background: `linear-gradient(to right, #61dafb 0%, #61dafb ${percentage}%, #444 ${percentage}%, #444 100%)`
     };
+  };
+
+  // Add loop adjustment handlers
+  const adjustLoopPoint = (isStart: boolean, direction: 'left' | 'right', amount: 'measure' | 'beat') => {
+    const beatsPerMeasure = timeSignature[0];
+    const adjustment = amount === 'measure' ? beatsPerMeasure : 1;
+    const delta = direction === 'left' ? -adjustment : adjustment;
+
+    if (isStart) {
+      const newStart = Math.max(0, loopStart + delta);
+      if (newStart < loopEnd) {
+        onLoopPointsChange(newStart, loopEnd);
+      }
+    } else {
+      const newEnd = Math.min(duration, loopEnd + delta);
+      if (newEnd > loopStart) {
+        onLoopPointsChange(loopStart, newEnd);
+      }
+    }
   };
 
   return (
@@ -215,27 +282,34 @@ const Controls: React.FC<ControlsProps> = ({
                 <input
                   type="text"
                   className="time-input"
-                  value={formatTimeDecimal(loopStart)}
+                  value={tempTimeStart}
                   onChange={(e) => handleTimeInputChange(e.target.value, true)}
+                  onBlur={(e) => handleTimeInputBlur(e.target.value, true)}
                 />
                 <label>Measure/Beat:</label>
                 <input
                   type="text"
                   className="measure-input"
-                  value={getMeasureTime(loopStart)}
+                  value={tempMeasureStart}
                   onChange={(e) => handleMeasureInputChange(e.target.value, true)}
+                  onBlur={(e) => handleMeasureInputBlur(e.target.value, true)}
+                />
+                <LoopPointAdjuster 
+                  onAdjust={(direction, amount) => adjustLoopPoint(true, direction, amount)} 
                 />
               </div>
             </div>
-            <input
-              type="range"
-              min="0"
-              max={duration}
-              step="0.1"
-              value={loopStart}
-              onChange={(e) => onLoopPointsChange(parseFloat(e.target.value), loopEnd)}
-              style={getSliderStyle(loopStart, 0, duration)}
-            />
+            <div className="slider-container">
+              <input
+                type="range"
+                min="0"
+                max={duration}
+                step="0.1"
+                value={loopStart}
+                onChange={(e) => onLoopPointsChange(parseFloat(e.target.value), loopEnd)}
+                style={getSliderStyle(loopStart, 0, duration)}
+              />
+            </div>
           </div>
           <div className="loop-point-control">
             <div className="loop-point-label">
@@ -245,27 +319,34 @@ const Controls: React.FC<ControlsProps> = ({
                 <input
                   type="text"
                   className="time-input"
-                  value={formatTimeDecimal(loopEnd)}
+                  value={tempTimeEnd}
                   onChange={(e) => handleTimeInputChange(e.target.value, false)}
+                  onBlur={(e) => handleTimeInputBlur(e.target.value, false)}
                 />
                 <label>Measure/Beat:</label>
                 <input
                   type="text"
                   className="measure-input"
-                  value={getMeasureTime(loopEnd)}
+                  value={tempMeasureEnd}
                   onChange={(e) => handleMeasureInputChange(e.target.value, false)}
+                  onBlur={(e) => handleMeasureInputBlur(e.target.value, false)}
+                />
+                <LoopPointAdjuster 
+                  onAdjust={(direction, amount) => adjustLoopPoint(false, direction, amount)} 
                 />
               </div>
             </div>
-            <input
-              type="range"
-              min="0"
-              max={duration}
-              step="0.1"
-              value={loopEnd}
-              onChange={(e) => onLoopPointsChange(loopStart, parseFloat(e.target.value))}
-              style={getSliderStyle(loopEnd, 0, duration)}
-            />
+            <div className="slider-container">
+              <input
+                type="range"
+                min="0"
+                max={duration}
+                step="0.1"
+                value={loopEnd}
+                onChange={(e) => onLoopPointsChange(loopStart, parseFloat(e.target.value))}
+                style={getSliderStyle(loopEnd, 0, duration)}
+              />
+            </div>
           </div>
         </div>
       )}
