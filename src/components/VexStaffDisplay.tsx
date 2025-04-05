@@ -276,6 +276,15 @@ function getXPositionForTime(time: number, totalWidth: number, totalDuration: nu
   return clefWidth + (time * SCROLL_SCALE);
 }
 
+/**
+ * Converts time to measure.beat format
+ */
+function getFormattedMeasureTime(time: number, beatsPerMeasure: number): string {
+  const measure = Math.floor(time / beatsPerMeasure) + 1; // Adding 1 since measures are 1-based
+  const beat = ((time % beatsPerMeasure) + 1).toFixed(2); // Format to 2 decimal places
+  return `${measure}.${beat}`;
+}
+
 const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({ 
   notes, 
   currentTime, 
@@ -610,11 +619,19 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
             <div 
               className="sheet-loop-marker sheet-loop-start-marker"
               style={{ left: `${getLoopMarkerPosition(loopStart)}px` }}
-            />
+            >
+              <div className="measure-info">
+                M{getFormattedMeasureTime(loopStart, timeSignature[0])}
+              </div>
+            </div>
             <div 
               className="sheet-loop-marker sheet-loop-end-marker"
               style={{ left: `${getLoopMarkerPosition(loopEnd)}px` }}
-            />
+            >
+              <div className="measure-info">
+                M{getFormattedMeasureTime(loopEnd, timeSignature[0])}
+              </div>
+            </div>
             <div 
               className="sheet-loop-region"
               style={{

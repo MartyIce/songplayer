@@ -21,6 +21,7 @@ interface ControlsProps {
   loopStart: number;
   loopEnd: number;
   onLoopPointsChange: (start: number, end: number) => void;
+  timeSignature: [number, number]; // [beats per measure, beat unit]
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -42,12 +43,58 @@ const Controls: React.FC<ControlsProps> = ({
   loopStart,
   loopEnd,
   onLoopPointsChange,
+  timeSignature,
 }) => {
   // Format time as MM:SS
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Format time as decimal number with 2 decimal places
+  const formatTimeDecimal = (time: number) => {
+    return time.toFixed(2);
+  };
+
+  // Format measure.beat
+  const getMeasureTime = (time: number) => {
+    const beatsPerMeasure = timeSignature[0];
+    const measure = Math.floor(time / beatsPerMeasure) + 1;
+    const beat = ((time % beatsPerMeasure) + 1).toFixed(2);
+    return `${measure}.${beat}`;
+  };
+
+  // Handle time input change
+  const handleTimeInputChange = (value: string, isStart: boolean) => {
+    const newTime = parseFloat(value);
+    if (!isNaN(newTime) && newTime >= 0 && newTime <= duration) {
+      if (isStart) {
+        onLoopPointsChange(newTime, loopEnd);
+      } else {
+        onLoopPointsChange(loopStart, newTime);
+      }
+    }
+  };
+
+  // Handle measure.beat input change
+  const handleMeasureInputChange = (value: string, isStart: boolean) => {
+    const [measureStr, beatStr] = value.split('.');
+    const measure = parseInt(measureStr);
+    const beat = parseFloat(beatStr);
+    
+    if (!isNaN(measure) && !isNaN(beat) && measure > 0 && beat > 0) {
+      const beatsPerMeasure = timeSignature[0];
+      const newTime = (measure - 1) * beatsPerMeasure + (beat - 1);
+      
+      if (newTime >= 0 && newTime <= duration) {
+        if (isStart) {
+          onLoopPointsChange(newTime, loopEnd);
+        } else {
+          onLoopPointsChange(loopStart, newTime);
+        }
+      }
+    }
   };
 
   // Calculate slider percentage for styling
@@ -130,7 +177,25 @@ const Controls: React.FC<ControlsProps> = ({
       {loopEnabled && (
         <div className="loop-controls">
           <div className="loop-point-control">
-            <label>Loop Start: {formatTime(loopStart)}</label>
+            <div className="loop-point-label">
+              <span>Loop Start</span>
+              <div className="input-group">
+                <label>Time:</label>
+                <input
+                  type="text"
+                  className="time-input"
+                  value={formatTimeDecimal(loopStart)}
+                  onChange={(e) => handleTimeInputChange(e.target.value, true)}
+                />
+                <label>Measure/Beat:</label>
+                <input
+                  type="text"
+                  className="measure-input"
+                  value={getMeasureTime(loopStart)}
+                  onChange={(e) => handleMeasureInputChange(e.target.value, true)}
+                />
+              </div>
+            </div>
             <input
               type="range"
               min="0"
@@ -142,7 +207,25 @@ const Controls: React.FC<ControlsProps> = ({
             />
           </div>
           <div className="loop-point-control">
-            <label>Loop End: {formatTime(loopEnd)}</label>
+            <div className="loop-point-label">
+              <span>Loop End</span>
+              <div className="input-group">
+                <label>Time:</label>
+                <input
+                  type="text"
+                  className="time-input"
+                  value={formatTimeDecimal(loopEnd)}
+                  onChange={(e) => handleTimeInputChange(e.target.value, false)}
+                />
+                <label>Measure/Beat:</label>
+                <input
+                  type="text"
+                  className="measure-input"
+                  value={getMeasureTime(loopEnd)}
+                  onChange={(e) => handleMeasureInputChange(e.target.value, false)}
+                />
+              </div>
+            </div>
             <input
               type="range"
               min="0"

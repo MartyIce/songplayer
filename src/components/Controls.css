@@ -235,10 +235,70 @@
   gap: 5px;
 }
 
-.loop-point-control label {
+.loop-point-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   color: #ddd;
   margin-bottom: 5px;
   font-size: 14px;
+}
+
+.loop-point-label span {
+  font-weight: bold;
+  font-size: 15px;
+  color: #fff;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.input-group label {
+  color: #aaa;
+  font-size: 13px;
+}
+
+/* Time label and input styling */
+.input-group label:first-of-type {
+  text-align: right;
+  width: 45px;
+  margin-right: 4px;
+}
+
+/* Measure/Beat label and input styling */
+.input-group label:last-of-type {
+  margin-left: 24px;
+  margin-right: 4px;
+}
+
+.time-input,
+.measure-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 14px;
+  width: 70px;
+  text-align: center;
+  font-family: monospace;
+}
+
+.time-input:hover,
+.measure-input:hover {
+  border-color: rgba(97, 218, 251, 0.5);
+}
+
+.time-input:focus,
+.measure-input:focus {
+  outline: none;
+  border-color: #61dafb;
+  background: rgba(97, 218, 251, 0.1);
 }
 
 .loop-point-control input[type="range"] {

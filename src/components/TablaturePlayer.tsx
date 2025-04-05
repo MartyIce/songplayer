@@ -719,6 +719,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         loopStart={loopStart}
         loopEnd={loopEnd}
         onLoopPointsChange={handleLoopPointsChange}
+        timeSignature={song.timeSignature || [3, 4]}
       />
       
       <VexStaffDisplay
