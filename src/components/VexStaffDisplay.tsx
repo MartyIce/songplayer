@@ -261,7 +261,7 @@ function positionNotes(groupedNotes: GroupedNote[],
     if (index < tickables.length) {
       const tickable = tickables[index];
       // Set the x position based on the same scale factor as grid lines
-      const xPos = CLEF_WIDTH + (group.time * SCROLL_SCALE);
+      const xPos = (group.time * SCROLL_SCALE);
       tickable.setXShift(xPos - tickable.getX());
     }
   });
@@ -364,18 +364,25 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       voice.draw(context, stave);
       
       // Draw measure barlines
+      // Calculate the first measure line position
       let currentMeasureTime = beatsPerMeasure;
-      while (currentMeasureTime < lastNoteTime) {
+      
+      // Draw measure barlines
+      while (currentMeasureTime <= lastNoteTime) {
         // Calculate position based on SCROLL_SCALE to align with tablature grid lines
         const x = CLEF_WIDTH + (currentMeasureTime * SCROLL_SCALE);
         
-        context.beginPath();
-        context.moveTo(x, stave.getYForLine(0));
-        context.lineTo(x, stave.getYForLine(4));
-        context.setStrokeStyle('#FFFFFF');
-        context.setLineWidth(1);
-        context.stroke();
+        // Only draw the line if it's after the clef and time signature
+        if (x > CLEF_WIDTH) {
+          context.beginPath();
+          context.moveTo(x, stave.getYForLine(0));
+          context.lineTo(x, stave.getYForLine(4));
+          context.setStrokeStyle('#FFFFFF');
+          context.setLineWidth(1);
+          context.stroke();
+        }
         
+        // Move to next measure boundary
         currentMeasureTime += beatsPerMeasure;
       }
       
