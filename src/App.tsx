@@ -60,26 +60,18 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>String Slinger</h1>
+        <img src={`${process.env.PUBLIC_URL}/string-slinger.png`} alt="String Slinger" className="logo" />
       </header>
       <main>
-        <div className="song-selector">
-          <label htmlFor="song-select">Select Song: </label>
-          <select 
-            id="song-select" 
-            onChange={handleSongChange}
-            value={songList.find(song => song.name === currentSong?.title)?.id || songList[0].id}
-            disabled={isLoading}
-          >
-            {songList.map(song => (
-              <option key={song.id} value={song.id}>
-                {song.name}
-              </option>
-            ))}
-          </select>
-          {isLoading && <span className="loading-indicator">Loading...</span>}
-        </div>
-        {currentSong && <TablaturePlayer song={currentSong} />}
+        {currentSong && (
+          <TablaturePlayer 
+            song={currentSong} 
+            songList={songList}
+            currentSongId={songList.find(song => song.name === currentSong.title)?.id || songList[0].id}
+            onSongChange={handleSongChange}
+            isLoading={isLoading}
+          />
+        )}
       </main>
     </div>
   );

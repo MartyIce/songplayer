@@ -22,6 +22,10 @@ interface ControlsProps {
   loopEnd: number;
   onLoopPointsChange: (start: number, end: number) => void;
   timeSignature: [number, number]; // [beats per measure, beat unit]
+  songList: { id: string; name: string }[];
+  currentSongId: string;
+  onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  isLoading: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -44,6 +48,10 @@ const Controls: React.FC<ControlsProps> = ({
   loopEnd,
   onLoopPointsChange,
   timeSignature,
+  songList,
+  currentSongId,
+  onSongChange,
+  isLoading,
 }) => {
   // Format time as MM:SS
   const formatTime = (time: number) => {
@@ -107,71 +115,94 @@ const Controls: React.FC<ControlsProps> = ({
 
   return (
     <div className="controls">
-      <div className="main-controls">
-        <button className="play-button" onClick={onPlay}>
-          {isPlaying ? '⏸ Pause' : '▶ Play'}
-        </button>
-        <button className="stop-button" onClick={onStop}>
-          ⏹ Stop
-        </button>
-        <div className="time-display">
-          {formatTime(currentTime)} / {formatTime(duration)}
+      <div className="top-controls">
+        <div className="main-controls">
+          <button className="play-button" onClick={onPlay}>
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+          <button className="stop-button" onClick={onStop}>
+            ⏹ Stop
+          </button>
+          <div className="time-display">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </div>
+        </div>
+
+        <div className="tempo-control">
+          <label>Tempo: {bpm} BPM</label>
+          <input
+            type="range"
+            min="40"
+            max="200"
+            value={bpm}
+            onChange={(e) => onBpmChange(parseInt(e.target.value))}
+          />
+        </div>
+
+        <div className="right-controls">
+          <div className="guitar-control">
+            <label htmlFor="guitar-type">Type:</label>
+            <select
+              id="guitar-type"
+              value={guitarType}
+              onChange={(e) => onGuitarChange(e.target.value as GuitarType)}
+              className="guitar-select"
+            >
+              <option value="acoustic">Acoustic</option>
+              <option value="electric">Electric</option>
+              <option value="nylon">Nylon String</option>
+            </select>
+          </div>
+
+          <div className="song-select">
+            <label htmlFor="song-select">Song:</label>
+            <select 
+              id="song-select" 
+              onChange={onSongChange}
+              value={currentSongId}
+              disabled={isLoading}
+              className="song-selector"
+            >
+              {songList.map(song => (
+                <option key={song.id} value={song.id}>
+                  {song.name}
+                </option>
+              ))}
+            </select>
+            {isLoading && <span className="loading-indicator">Loading...</span>}
+          </div>
         </div>
       </div>
 
-      <div className="guitar-control">
-        <label htmlFor="guitar-type">Guitar Type</label>
-        <select
-          id="guitar-type"
-          value={guitarType}
-          onChange={(e) => onGuitarChange(e.target.value as GuitarType)}
-          className="guitar-select"
-        >
-          <option value="acoustic">Acoustic</option>
-          <option value="electric">Electric</option>
-          <option value="nylon">Nylon String</option>
-        </select>
-      </div>
+      <div className="middle-controls">
+        <div className="playback-controls">
+          <label className="control-checkbox">
+            <input
+              type="checkbox"
+              checked={metronomeEnabled}
+              onChange={(e) => onMetronomeChange(e.target.checked)}
+            />
+            <span>Enable Metronome</span>
+          </label>
 
-      <div className="tempo-control">
-        <label>Tempo: {bpm} BPM</label>
-        <input
-          type="range"
-          min="40"
-          max="200"
-          value={bpm}
-          onChange={(e) => onBpmChange(parseInt(e.target.value))}
-          style={getSliderStyle(bpm, 40, 200)}
-        />
-      </div>
+          <label className="control-checkbox">
+            <input
+              type="checkbox"
+              checked={isMuted}
+              onChange={(e) => onMuteChange(e.target.checked)}
+            />
+            <span>Mute Guitar</span>
+          </label>
 
-      <div className="playback-controls">
-        <label className="control-checkbox">
-          <input
-            type="checkbox"
-            checked={metronomeEnabled}
-            onChange={(e) => onMetronomeChange(e.target.checked)}
-          />
-          <span>Enable Metronome</span>
-        </label>
-
-        <label className="control-checkbox">
-          <input
-            type="checkbox"
-            checked={isMuted}
-            onChange={(e) => onMuteChange(e.target.checked)}
-          />
-          <span>Mute Guitar</span>
-        </label>
-
-        <label className="control-checkbox">
-          <input
-            type="checkbox"
-            checked={loopEnabled}
-            onChange={(e) => onLoopChange(e.target.checked)}
-          />
-          <span>Enable Loop</span>
-        </label>
+          <label className="control-checkbox">
+            <input
+              type="checkbox"
+              checked={loopEnabled}
+              onChange={(e) => onLoopChange(e.target.checked)}
+            />
+            <span>Enable Loop</span>
+          </label>
+        </div>
       </div>
 
       {loopEnabled && (

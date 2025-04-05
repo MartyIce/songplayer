@@ -5,15 +5,15 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  padding: 20px;
-  gap: 20px;
+  padding: 10px;
+  gap: 10px;
   user-select: none;
 }
 
 .controls-container {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -23,7 +23,7 @@
   background: #1a1a1a;
   border-radius: 8px;
   padding: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .tablature-display {

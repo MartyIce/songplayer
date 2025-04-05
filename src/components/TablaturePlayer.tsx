@@ -11,9 +11,19 @@ import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
 
 interface TablaturePlayerProps {
   song: SongData;
+  songList: { id: string; name: string; filename: string; }[];
+  currentSongId: string;
+  onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  isLoading: boolean;
 }
 
-const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
+const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ 
+  song,
+  songList,
+  currentSongId,
+  onSongChange,
+  isLoading
+}) => {
   // Keep both the original song and the processed version
   const [originalSong, processedSong] = useMemo(() => {
     if (song.tuning) {
@@ -720,6 +730,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ song }) => {
         loopEnd={loopEnd}
         onLoopPointsChange={handleLoopPointsChange}
         timeSignature={song.timeSignature || [3, 4]}
+        songList={songList}
+        currentSongId={currentSongId}
+        onSongChange={onSongChange}
+        isLoading={isLoading}
       />
       
       <VexStaffDisplay
