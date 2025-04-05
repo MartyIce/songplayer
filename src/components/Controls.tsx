@@ -117,6 +117,17 @@ const Controls: React.FC<ControlsProps> = ({
   };
 
   const handleMeasureInputBlur = (value: string, isStart: boolean) => {
+    // Handle case where input is just a measure number (e.g. "14")
+    if (!value.includes('.')) {
+      value = value + '.1.0';  // Default to first beat, no decimal
+    } else {
+      // Handle case where input is measure.beat (e.g. "14.1")
+      const parts = value.split('.');
+      if (parts.length === 2) {
+        value = value + '.0';  // Add .0 if no decimal provided
+      }
+    }
+
     // Split on first dot to separate measure from beat
     const [measureStr, ...beatParts] = value.split('.');
     // Rejoin any remaining parts with dots to handle decimal beats
