@@ -189,12 +189,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         const loopStartSeconds = loopStart * (60 / Tone.Transport.bpm.value);
         Tone.Transport.seconds = loopStartSeconds;
         
-        // Force an immediate update of visible notes and scroll position
-        if (containerRef.current) {
-          const containerWidth = containerRef.current.clientWidth;
-          setScrollOffset(containerWidth / 2 - (loopStart * basePixelsPerBeat));
-        }
-        
         // Clear the reset animation flag after a short delay
         setTimeout(() => {
           setIsResetAnimating(false);
@@ -205,7 +199,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       }, loopEndTime);
       scheduledNotes.current.push(loopId);
     }
-  }, [loopEnabled, loopEnd, loopStart, isMuted, basePixelsPerBeat, processedSong.notes, playNote]);
+  }, [loopEnabled, loopEnd, loopStart, isMuted, processedSong.notes, playNote]);
   
   // Update visible notes based on current time
   useEffect(() => {
@@ -305,12 +299,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           if (lastKnownTime > transportTimeInBeats + 1) {
             // Force-update the UI to reflect the loop restart
             setVisibleNotes([]); // Clear notes for a clean restart
-            
-            // Update scroll position for loop start if not in manual mode
-            if (containerRef.current && !isManualScrolling) {
-              const containerWidth = containerRef.current.clientWidth;
-              setScrollOffset(containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat));
-            }
           }
         } else if (transportTimeInBeats >= songDuration) {
           handleStop();
@@ -322,6 +310,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         
         setCurrentTime(transportTimeInBeats);
         
+        // Only update scroll position if not in manual mode
         if (!isManualScrolling && containerRef.current) {
           const containerWidth = containerRef.current.clientWidth;
           // Calculate offset to keep the current position at the trigger line
@@ -342,7 +331,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, loopStart, isResetAnimating, basePixelsPerBeat, currentTime, handleStop]);
+  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, isResetAnimating, basePixelsPerBeat, currentTime, handleStop]);
 
   // Handle mute change
   const handleMuteChange = useCallback((muted: boolean) => {
@@ -398,9 +387,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
       }
       
-      // Initialize scroll position
-      const containerWidth = containerRef.current.clientWidth;
-      setScrollOffset(containerWidth / 2);
+      // Initialize scroll position only if not in manual mode
+      if (!isManualScrolling && containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        setScrollOffset(containerWidth / 2);
+      }
       
       // Schedule notes from current position
       scheduleNotes(loopEnabled ? loopStart : currentTime);
@@ -409,7 +400,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       Tone.Transport.start();
       setIsPlaying(true);
     }
-  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes]);
+  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling]);
   
   const handlePlayPause = useCallback(async () => {
     if (isPlaying) {
