@@ -8,6 +8,8 @@
   justify-content: flex-start; /* Align to the left to show beginning */
   position: relative;
   background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 10px;
 }
 
 /* Scrollable container for the staff */
@@ -197,4 +199,29 @@
 .staff-scroll-container {
   scrollbar-width: none;
   -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+}
+
+/* Add resume button styles */
+.staff-resume-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 12px;
+  background-color: rgba(255, 255, 255, 0.7);
+  color: black;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 100;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.staff-resume-button.visible {
+  opacity: 1;
+}
+
+.staff-resume-button:hover {
+  background-color: rgba(255, 255, 255, 0.8);
 } 

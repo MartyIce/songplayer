@@ -255,12 +255,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
 
   // Auto-scroll during playback
   useEffect(() => {
-    if (isPlaying && currentTime > 0 && containerRef.current) {
+    if (isPlaying && currentTime > 0 && containerRef.current && !isManualScrolling) {
       const basePixelsPerBeat = 60;
       const containerWidth = containerRef.current.clientWidth;
       setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
     }
-  }, [isPlaying, currentTime, basePixelsPerBeat]);
+  }, [isPlaying, currentTime, basePixelsPerBeat, isManualScrolling]);
 
   // Update current time based on Transport position
   useEffect(() => {
@@ -297,8 +297,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
             // Force-update the UI to reflect the loop restart
             setVisibleNotes([]); // Clear notes for a clean restart
             
-            // Update scroll position for loop start
-            if (containerRef.current) {
+            // Update scroll position for loop start if not in manual mode
+            if (containerRef.current && !isManualScrolling) {
               const containerWidth = containerRef.current.clientWidth;
               setScrollOffset(containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat));
             }
@@ -609,10 +609,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     
     const newOffset = e.clientX - startX;
     setScrollOffset(newOffset);
-    
-    if (dragTimeout.current) {
-      clearTimeout(dragTimeout.current);
-    }
   };
 
   const handleMouseUp = () => {
@@ -620,19 +616,13 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     if (tablatureContentRef.current) {
       tablatureContentRef.current.classList.remove('no-transition');
     }
-
-    if (dragTimeout.current) {
-      clearTimeout(dragTimeout.current);
-    }
-    dragTimeout.current = setTimeout(() => {
-      setIsManualScrolling(false);
-    }, 2000);
   };
 
   // Handle touch events for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
     setStartX(e.touches[0].clientX - scrollOffset);
+    setIsManualScrolling(true);
     if (tablatureContentRef.current) {
       tablatureContentRef.current.classList.add('no-transition');
     }
@@ -643,15 +633,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     
     const newOffset = e.touches[0].clientX - startX;
     setScrollOffset(newOffset);
-    setIsManualScrolling(true);
-    
-    if (dragTimeout.current) {
-      clearTimeout(dragTimeout.current);
-    }
-    
-    dragTimeout.current = setTimeout(() => {
-      setIsManualScrolling(false);
-    }, 2000);
   };
 
   const handleTouchEnd = () => {
@@ -660,6 +641,15 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       tablatureContentRef.current.classList.remove('no-transition');
     }
   };
+
+  // Handle resuming auto-scroll
+  const handleResumeAutoScroll = useCallback(() => {
+    setIsManualScrolling(false);
+    if (containerRef.current && isPlaying) {
+      const containerWidth = containerRef.current.clientWidth;
+      setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
+    }
+  }, [isPlaying, currentTime, basePixelsPerBeat]);
 
   // Calculate the required width for the entire song
   const contentWidth = useMemo(() => {
@@ -720,6 +710,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {isManualScrolling && isPlaying && (
+          <button 
+            className="resume-button visible"
+            onClick={handleResumeAutoScroll}
+          >
+            Resume Auto-Scroll
+          </button>
+        )}
         <div 
           ref={tablatureContentRef}
           className={`tablature-content ${isDragging ? 'no-transition' : ''}`}

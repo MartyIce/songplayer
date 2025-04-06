@@ -517,32 +517,20 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       setDragStartX(e.clientX);
       setScrollStartX(scrollContainerRef.current.scrollLeft);
       setManualScrollMode(true);
-      
-      // Add no-transition class for immediate response during dragging
-      if (containerRef.current) {
-        containerRef.current.classList.add('no-transition');
-      }
     }
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging && scrollContainerRef.current) {
-      e.preventDefault(); // Prevent text selection during drag
+      e.preventDefault();
       const dx = e.clientX - dragStartX;
       const newScrollLeft = scrollStartX - dx;
-      
-      // Direct DOM manipulation for immediate response and synchronization
       scrollContainerRef.current.scrollLeft = newScrollLeft;
     }
   }, [isDragging, dragStartX, scrollStartX]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-    
-    // Remove no-transition class when dragging ends
-    if (containerRef.current) {
-      containerRef.current.classList.remove('no-transition');
-    }
   }, []);
 
   // Touch event handlers for mobile dragging
@@ -552,11 +540,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       setDragStartX(e.touches[0].clientX);
       setScrollStartX(scrollContainerRef.current.scrollLeft);
       setManualScrollMode(true);
-      
-      // Add no-transition class for immediate response during dragging
-      if (containerRef.current) {
-        containerRef.current.classList.add('no-transition');
-      }
     }
   }, []);
 
@@ -564,25 +547,28 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     if (isDragging && scrollContainerRef.current && e.touches[0]) {
       const dx = e.touches[0].clientX - dragStartX;
       const newScrollLeft = scrollStartX - dx;
-      
-      // Direct DOM manipulation for immediate response and synchronization
       scrollContainerRef.current.scrollLeft = newScrollLeft;
     }
   }, [isDragging, dragStartX, scrollStartX]);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
-    
-    // Remove no-transition class when dragging ends
-    if (containerRef.current) {
-      containerRef.current.classList.remove('no-transition');
-    }
   }, []);
 
   // Toggle between auto-scroll and manual mode on double click
   const handleDoubleClick = useCallback(() => {
     setManualScrollMode(!manualScrollMode);
   }, [manualScrollMode]);
+
+  // Add resume auto-scroll handler
+  const handleResumeAutoScroll = useCallback(() => {
+    setManualScrollMode(false);
+    if (scrollContainerRef.current) {
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+      scrollContainerRef.current.scrollLeft = targetScrollLeft;
+    }
+  }, [currentTime]);
 
   // Helper to get the X position for loop markers
   const getLoopMarkerPosition = (time: number): number => {
@@ -599,6 +585,14 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
 
   return (
     <div className="vex-staff-display">
+      {manualScrollMode && (
+        <button 
+          className="staff-resume-button visible"
+          onClick={handleResumeAutoScroll}
+        >
+          Resume Auto-Scroll
+        </button>
+      )}
       <div 
         className={`staff-scroll-container ${manualScrollMode ? 'manual-scroll' : ''}`} 
         ref={scrollContainerRef}
@@ -640,10 +634,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
               }}
             />
           </>
-        )}
-        
-        {manualScrollMode && (
-          <div className="manual-scroll-indicator">Manual Scroll</div>
         )}
       </div>
     </div>
