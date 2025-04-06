@@ -7,7 +7,8 @@ export const STORAGE_KEYS = {
   LOOP_START: 'songplayer_loop_start',
   LOOP_END: 'songplayer_loop_end',
   METRONOME_ENABLED: 'songplayer_metronome_enabled',
-  MUTE: 'songplayer_mute'
+  MUTE: 'songplayer_mute',
+  NIGHT_MODE: 'songplayer_night_mode'
 };
 
 // Save a value to local storage

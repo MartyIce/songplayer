@@ -27,6 +27,8 @@ interface ControlsProps {
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;
+  nightMode: boolean;
+  onNightModeChange: (enabled: boolean) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -53,6 +55,8 @@ const Controls: React.FC<ControlsProps> = ({
   currentSongId,
   onSongChange,
   isLoading,
+  nightMode,
+  onNightModeChange,
 }) => {
   // Add state for temporary input values
   const [tempTimeStart, setTempTimeStart] = useState<string>('');
@@ -279,6 +283,15 @@ const Controls: React.FC<ControlsProps> = ({
               onChange={(e) => onLoopChange(e.target.checked)}
             />
             <span>Enable Loop</span>
+          </label>
+
+          <label className="control-checkbox">
+            <input
+              type="checkbox"
+              checked={nightMode}
+              onChange={(e) => onNightModeChange(e.target.checked)}
+            />
+            <span>Night Mode</span>
           </label>
         </div>
       </div>

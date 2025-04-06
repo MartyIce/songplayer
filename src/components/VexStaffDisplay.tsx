@@ -10,6 +10,7 @@ interface VexStaffDisplayProps {
   loopEnabled?: boolean;
   loopStart?: number;
   loopEnd?: number;
+  nightMode?: boolean;
 }
 
 interface GroupedNote {
@@ -291,7 +292,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   timeSignature,
   loopEnabled = false,
   loopStart = 0,
-  loopEnd = 0
+  loopEnd = 0,
+  nightMode = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const factoryRef = useRef<Factory | null>(null);
@@ -326,7 +328,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         elementId: containerRef.current.id || 'vf-container',
         width: calculatedWidth,
         height: 150,
-        background: '#1a1a1a'
+        background: nightMode ? '#1a1a1a' : '#ffffff'
       }
     });
     
@@ -386,7 +388,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           context.beginPath();
           context.moveTo(x, stave.getYForLine(0));
           context.lineTo(x, stave.getYForLine(4));
-          context.setStrokeStyle('#FFFFFF');
+          context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
           context.setLineWidth(1);
           context.stroke();
         }
@@ -403,8 +405,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           const allNotes = svg.querySelectorAll('.vf-stavenote, .vf-notehead');
           allNotes.forEach(note => {
             note.removeAttribute('data-active');
-            note.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-            note.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
+            note.setAttribute('fill', nightMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)');
+            note.setAttribute('stroke', nightMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)');
           });
           
           // Find and color active notes
@@ -450,7 +452,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         factoryRef.current.reset();
       }
     };
-  }, [notes, timeSignature, currentTime]);
+  }, [notes, timeSignature, currentTime, nightMode]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {
@@ -474,8 +476,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         const allNotes = svg.querySelectorAll('.vf-stavenote, .vf-notehead');
         allNotes.forEach(note => {
           note.removeAttribute('data-active');
-          note.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
-          note.setAttribute('stroke', 'rgba(255, 255, 255, 0.8)');
+          note.setAttribute('fill', nightMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)');
+          note.setAttribute('stroke', nightMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)');
         });
         
         // Find active notes by time
@@ -508,7 +510,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         scrollContainerRef.current.scrollLeft = targetScrollLeft;
       }
     }
-  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging]);
+  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging, nightMode]);
 
   // Mouse event handlers for dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -584,7 +586,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   }, [loopEnabled, loopStart, loopEnd, activeNotePos, manualScrollMode, currentTime]);
 
   return (
-    <div className="vex-staff-display">
+    <div className="vex-staff-display" data-night-mode={nightMode}>
       {manualScrollMode && (
         <button 
           className="staff-resume-button visible"

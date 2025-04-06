@@ -7,9 +7,14 @@
   display: flex;
   justify-content: flex-start; /* Align to the left to show beginning */
   position: relative;
-  background-color: #1a1a1a;
   border-radius: 8px;
   padding: 10px;
+  transition: background-color 0.3s ease;
+  background-color: #ffffff; /* Default to white for day mode */
+}
+
+.vex-staff-display[data-night-mode="true"] {
+  background-color: #1a1a1a;
 }
 
 /* Scrollable container for the staff */
@@ -58,13 +63,12 @@
   height: 100%;
 }
 
-/* Default styling for all elements - white/light color */
+/* Default styling for all elements - color handled by JS now */
 #vf-container svg path,
 #vf-container svg rect,
 #vf-container svg circle,
 #vf-container svg text {
-  stroke: rgba(255, 255, 255, 0.8);
-  fill: rgba(255, 255, 255, 0.8);
+  transition: stroke 0.3s ease, fill 0.3s ease;
 }
 
 /* Only target notes that are explicitly marked as active */

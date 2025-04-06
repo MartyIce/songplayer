@@ -62,6 +62,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [startX, setStartX] = useState(0);
   const [isManualScrolling, setIsManualScrolling] = useState(false);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
+  const [nightMode, setNightMode] = useState(() => getFromStorage(STORAGE_KEYS.NIGHT_MODE, false));
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Refs
@@ -673,6 +674,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     saveToStorage(STORAGE_KEYS.LOOP_ENABLED, enabled);
   }, []);
 
+  // Handle night mode change
+  const handleNightModeChange = useCallback((enabled: boolean) => {
+    setNightMode(enabled);
+    saveToStorage(STORAGE_KEYS.NIGHT_MODE, enabled);
+  }, []);
+
   return (
     <div className="tablature-player" ref={containerRef}>
       <Controls
@@ -699,6 +706,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         currentSongId={currentSongId}
         onSongChange={onSongChange}
         isLoading={isLoading}
+        nightMode={nightMode}
+        onNightModeChange={handleNightModeChange}
       />
       
       <VexStaffDisplay
@@ -708,6 +717,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         loopEnabled={loopEnabled}
         loopStart={loopStart}
         loopEnd={loopEnd}
+        nightMode={nightMode}
       />
       
       <div 
