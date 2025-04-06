@@ -770,10 +770,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         </div>
 
         <div className="trigger-line" />
-        
-        <div className={`manual-scroll-indicator ${isManualScrolling ? 'visible' : ''}`}>
-          Manual Scrolling
-        </div>
       </div>
     </div>
   );
