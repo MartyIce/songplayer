@@ -200,10 +200,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       return;
     }
     
-    // Show notes within a reasonable window to avoid too many notes on screen at once
-    const visibleTimeWindowBefore = 2; // 2 seconds before current time
-    const visibleTimeWindowAfter = 8;  // 8 seconds after current time
-    
+    // Show all notes, but still handle loop boundaries
     const visible = processedSong.notes.filter(
       (note: Note) => {
         // Filter out rest notes - they should not be displayed in the tablature
@@ -213,44 +210,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
 
         // Handle looping
         if (loopEnabled && isPlaying) {
-          // Handle visualization around loop points
-          if (currentTime > loopEnd - 1 || currentTime < loopStart + 1) {
-            // Around loop boundaries, we have special cases
-            
-            // Only include notes within the loop region
-            if (note.time < loopStart || note.time > loopEnd) {
-              return false;
-            }
-            
-            // When near the end of the loop, also show notes from the start
-            // to prepare for the visual transition
-            if (currentTime > loopEnd - 1) {
-              if (note.time >= loopStart && note.time < loopStart + visibleTimeWindowAfter) {
-                return true;
-              }
-            }
-          } else {
-            // Regular case - only show notes within the loop and current viewport
-            if (note.time > loopEnd) {
-              return false;
-            }
-          }
+          // Only show notes within the loop region
+          return note.time >= loopStart && note.time <= loopEnd;
         }
         
-        // Standard visibility criteria
-        // Include notes that are about to be played (upcoming)
-        const isUpcoming = note.time > currentTime - visibleTimeWindowBefore && 
-                          note.time < currentTime + visibleTimeWindowAfter;
-        
-        // Include notes that are currently being played
-        const isNoteActive = note.time <= currentTime && 
-                          note.time + note.duration > currentTime;
-        
-        // Include notes that have just finished playing
-        const justFinished = note.time + note.duration >= currentTime - 1 && 
-                             note.time + note.duration <= currentTime;
-        
-        return isUpcoming || isNoteActive || justFinished;
+        // Show all notes
+        return true;
       }
     ) as StringFretNote[];
     
