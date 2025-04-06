@@ -327,7 +327,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       renderer: {
         elementId: containerRef.current.id || 'vf-container',
         width: calculatedWidth,
-        height: 150,
+        height: 180,
         background: nightMode ? '#1a1a1a' : '#ffffff'
       }
     });
@@ -336,6 +336,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     const system = factory.System({
       x: STAVE_LEFT_PADDING,
       width: calculatedWidth - (STAVE_LEFT_PADDING * 2),
+      y: 40
     });
     
     try {

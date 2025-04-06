@@ -1,7 +1,7 @@
 /* VexStaffDisplay Styles */
 .vex-staff-display {
   width: 100%;
-  height: 120px;
+  height: 160px; /* Increased from 120px to accommodate lower notes */
   overflow: hidden;
   margin-bottom: 10px;
   display: flex;
