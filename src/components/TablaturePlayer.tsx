@@ -222,20 +222,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         if ('rest' in note) {
           return false;
         }
-
-        // Handle looping
-        if (loopEnabled && isPlaying) {
-          // Only show notes within the loop region
-          return note.time >= loopStart && note.time <= loopEnd;
-        }
         
-        // Show all notes
+        // Show all notes, regardless of loop state
         return true;
       }
     ) as StringFretNote[];
     
     setVisibleNotes(visible);
-  }, [currentTime, processedSong.notes, isPlaying, loopEnabled, loopStart, loopEnd, isResetAnimating]);
+  }, [currentTime, processedSong.notes, isResetAnimating]);
   
   // Initialize position
   useEffect(() => {
