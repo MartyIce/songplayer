@@ -76,7 +76,9 @@
 .vex-staff-display > div {
   width: 100%;
   display: flex;
-  justify-content: flex-start; /* Changed from center to flex-start */
+  justify-content: flex-start;
+  /* Hide scrollbar but keep scrolling functionality */
+  overflow: hidden;
 }
 
 /* Active note styles - more specific selectors */
@@ -184,4 +186,15 @@
   z-index: 1;
   margin-top: 20px; /* Match the padding-top of markers */
   height: calc(100% - 20px); /* Adjust height to account for top margin */
+}
+
+/* Hide scrollbar for Webkit browsers (Chrome, Safari, newer Edge) */
+.staff-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for Firefox */
+.staff-scroll-container {
+  scrollbar-width: none;
+  -ms-overflow-style: none;  /* For Internet Explorer and Edge */
 } 
