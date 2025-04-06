@@ -3,6 +3,7 @@ import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
 import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
+import { STORAGE_KEYS, getFromStorage } from './utils/localStorage';
 
 // Define available songs metadata
 const songList = [
@@ -19,7 +20,10 @@ function App() {
 
   // Load initial song
   useEffect(() => {
-    loadSong(songList[0].filename);
+    // Get the saved song ID from local storage, or use the first song as default
+    const savedSongId = getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id);
+    const songToLoad = songList.find(song => song.id === savedSongId) || songList[0];
+    loadSong(songToLoad.filename);
   }, []);
 
   const loadSong = async (filename: string) => {

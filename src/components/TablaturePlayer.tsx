@@ -8,6 +8,7 @@ import Controls from './Controls';
 import VexStaffDisplay from './VexStaffDisplay';
 import { convertSongToStringFret } from '../utils/noteConverter';
 import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
+import { STORAGE_KEYS, saveToStorage, getFromStorage } from '../utils/localStorage';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -24,6 +25,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   onSongChange,
   isLoading
 }) => {
+  // Save current song ID whenever it changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CURRENT_SONG, currentSongId);
+  }, [currentSongId]);
+
   // Keep both the original song and the processed version
   const [originalSong, processedSong] = useMemo(() => {
     if (song.tuning) {
@@ -40,14 +46,17 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // State declarations
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [bpm, setBpm] = useState<number>(song.bpm);
+  const [bpm, setBpm] = useState<number>(() => getFromStorage(STORAGE_KEYS.TEMPO, song.bpm));
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
-  const [guitarType, setGuitarType] = useState<GuitarType>('acoustic');
-  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [loopEnabled, setLoopEnabled] = useState(false);
-  const [loopStart, setLoopStart] = useState(0);
-  const [loopEnd, setLoopEnd] = useState(song.notes[song.notes.length - 1].time + song.notes[song.notes.length - 1].duration);
+  const [guitarType, setGuitarType] = useState<GuitarType>(() => getFromStorage(STORAGE_KEYS.GUITAR_TYPE, 'acoustic'));
+  const [metronomeEnabled, setMetronomeEnabled] = useState(() => getFromStorage(STORAGE_KEYS.METRONOME_ENABLED, false));
+  const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
+  const [loopEnabled, setLoopEnabled] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_ENABLED, false));
+  const [loopStart, setLoopStart] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_START, 0));
+  const [loopEnd, setLoopEnd] = useState(() => {
+    const savedLoopEnd = getFromStorage(STORAGE_KEYS.LOOP_END, null);
+    return savedLoopEnd !== null ? savedLoopEnd : song.notes[song.notes.length - 1].time + song.notes[song.notes.length - 1].duration;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [startX, setStartX] = useState(0);
@@ -100,11 +109,17 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Initialize Tone.Transport
   useEffect(() => {
     // Set initial tempo and time signature
-    Tone.Transport.bpm.value = song.bpm;
+    const savedBpm = getFromStorage(STORAGE_KEYS.TEMPO, song.bpm);
+    Tone.Transport.bpm.value = savedBpm;
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
-    setBpm(song.bpm);
-    setLoopEnd(songDuration);
+    setBpm(savedBpm);
+    
+    // Only set loop end to songDuration if there's no saved value
+    const savedLoopEnd = getFromStorage(STORAGE_KEYS.LOOP_END, null);
+    if (savedLoopEnd === null) {
+      setLoopEnd(songDuration);
+    }
     
     // Clean up function
     return () => {
@@ -338,6 +353,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Handle mute change
   const handleMuteChange = useCallback((muted: boolean) => {
     setIsMuted(muted);
+    saveToStorage(STORAGE_KEYS.MUTE, muted);
     
     // Clear all currently scheduled notes
     scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
@@ -355,6 +371,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Handle metronome change
   const handleMetronomeChange = useCallback((enabled: boolean) => {
     setMetronomeEnabled(enabled);
+    saveToStorage(STORAGE_KEYS.METRONOME_ENABLED, enabled);
   }, []);
   
   // Handle pause button
@@ -416,6 +433,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
     
     setGuitarType(type);
+    saveToStorage(STORAGE_KEYS.GUITAR_TYPE, type);
     await guitarSampler.switchGuitar(type);
     
     if (wasPlaying) {
@@ -473,6 +491,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Handle BPM change
   const handleBpmChange = useCallback((newBpm: number) => {
     setBpm(newBpm);
+    saveToStorage(STORAGE_KEYS.TEMPO, newBpm);
     
     // Store current position and state
     const wasPlaying = isPlaying;
@@ -557,11 +576,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
 
   // Handle loop points change
   const handleLoopPointsChange = useCallback((start: number, end: number) => {
-    // No need to store previous values since they're not used
-    
     // Update loop points
     setLoopStart(start);
     setLoopEnd(end);
+    saveToStorage(STORAGE_KEYS.LOOP_START, start);
+    saveToStorage(STORAGE_KEYS.LOOP_END, end);
     
     if (isPlaying && loopEnabled) {
       // If we're playing and the current time is outside the new loop boundaries,
@@ -663,6 +682,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     return time * basePixelsPerBeat;
   };
 
+  // Handle loop enabled/disabled
+  const handleLoopEnabledChange = useCallback((enabled: boolean) => {
+    setLoopEnabled(enabled);
+    saveToStorage(STORAGE_KEYS.LOOP_ENABLED, enabled);
+  }, []);
+
   return (
     <div className="tablature-player" ref={containerRef}>
       <Controls
@@ -680,7 +705,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         isMuted={isMuted}
         onMuteChange={handleMuteChange}
         loopEnabled={loopEnabled}
-        onLoopChange={setLoopEnabled}
+        onLoopChange={handleLoopEnabledChange}
         loopStart={loopStart}
         loopEnd={loopEnd}
         onLoopPointsChange={handleLoopPointsChange}
