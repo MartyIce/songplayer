@@ -1,0 +1,80 @@
+2025-04-11 08:53:20,560 INFO [Giuliani Study 1]                 Book.java:562  | 1 sheet in /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.jpg
+2025-04-11 08:53:20,626 INFO []                 Book.java:2531 | Stored /book.xml
+2025-04-11 08:53:20,626 INFO []                 Book.java:2491 | Book stored as /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.omr
+2025-04-11 08:53:20,629 INFO []                 Book.java:1933 | Book reaching PAGE on sheets:[#1]
+2025-04-11 08:53:20,630 INFO [Giuliani Study 1]       StepMonitoring.java:98   | LOAD
+2025-04-11 08:53:20,715 INFO [Giuliani Study 1]            SheetStub.java:1268 | Loaded image #1 3024x2574 from /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.jpg
+2025-04-11 08:53:20,716 INFO [Giuliani Study 1]            ImageUtil.java:124  | Converting max RGB to gray
+2025-04-11 08:53:20,814 INFO [Giuliani Study 1]       StepMonitoring.java:98   | BINARY
+2025-04-11 08:53:20,984 INFO [Giuliani Study 1]       StepMonitoring.java:98   | SCALE
+2025-04-11 08:53:20,995 INFO [Giuliani Study 1]         ScaleBuilder.java:241  | Beam  guessed height: 10 -- 0.50 of 20 interline
+2025-04-11 08:53:20,996 INFO [Giuliani Study 1]         ScaleBuilder.java:264  | Beam measured height: 13 -- 0.50 of [6..20] range at 382% of needed quorum
+2025-04-11 08:53:20,996 INFO [Giuliani Study 1]            ScaleStep.java:65   | Scale{ interline(19,20,22) line(3,4,5) beam(13)}
+2025-04-11 08:53:20,996 INFO [Giuliani Study 1]       StepMonitoring.java:98   | GRID
+2025-04-11 08:53:21,418 INFO [Giuliani Study 1]       LinesRetriever.java:1500 | Global slope: -0.04607
+2025-04-11 08:53:21,428 INFO [Giuliani Study 1]    ClustersRetriever.java:328  | Retrieved raw line clusters: 5 of sizes [5] with interline(19,20,22)
+2025-04-11 08:53:21,478 INFO [Giuliani Study 1]            PeakGraph.java:310  | Systems: #1[1] #2[2] #3[3] #4[4] #5[5]
+2025-04-11 08:53:21,616 INFO [Giuliani Study 1]        SystemManager.java:134  | Indentation detected for system #1
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:134  | Indentation detected for system #2
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:134  | Indentation detected for system #5
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:723  | 3 pages found in sheet
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:779  | Page #1: 1 part along 1 system
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:779  | Page #2: 1 part along 3 systems
+2025-04-11 08:53:21,617 INFO [Giuliani Study 1]        SystemManager.java:779  | Page #3: 1 part along 1 system
+2025-04-11 08:53:21,618 INFO [Giuliani Study 1]                 Book.java:545  | Created scores: [{Score 1}, {Score 2}, {Score 3}]
+2025-04-11 08:53:21,618 INFO [Giuliani Study 1]       StepMonitoring.java:98   | HEADERS
+2025-04-11 08:53:21,721 INFO [Giuliani Study 1]      BasicClassifier.java:277  | Classifier loaded XML norms.
+2025-04-11 08:53:21,722 INFO [Giuliani Study 1]   AbstractClassifier.java:396  | Classifier data loaded from default uri jar:file:/Users/martymavis/Develop/songplayer/audiveris/app/build/distributions/app-5.5.0/lib/audiveris.jar!/res/basic-classifier.zip
+2025-04-11 08:53:21,959 WARN [Giuliani Study 1]          ClefBuilder.java:658  | Staff#1 no recognized header clef.
+2025-04-11 08:53:21,978 WARN [Giuliani Study 1]          ClefBuilder.java:658  | Staff#2 no recognized header clef.
+2025-04-11 08:53:22,034 WARN [Giuliani Study 1]          ClefBuilder.java:658  | Staff#5 no recognized header clef.
+2025-04-11 08:53:22,035 INFO [Giuliani Study 1]       StepMonitoring.java:98   | STEM_SEEDS
+2025-04-11 08:53:22,059 INFO [Giuliani Study 1]        StemSeedsStep.java:86   | stem(4 max:5)
+2025-04-11 08:53:22,082 INFO [Giuliani Study 1]       StepMonitoring.java:98   | BEAMS
+2025-04-11 08:53:24,324 INFO [Giuliani Study 1]       StepMonitoring.java:98   | LEDGERS
+2025-04-11 08:53:24,431 INFO [Giuliani Study 1]       StepMonitoring.java:98   | HEADS
+2025-04-11 08:53:25,805 INFO [Giuliani Study 1]        HeadSeedTally.java:235  | Scale information: HeadSeeds{NOTEHEAD_VOID[R:-0.5] NOTEHEAD_BLACK[L:-0.1,R:-0.5]}
+2025-04-11 08:53:25,805 INFO [Giuliani Study 1]       StepMonitoring.java:98   | STEMS
+2025-04-11 08:53:26,064 INFO [Giuliani Study 1]       StepMonitoring.java:98   | REDUCTION
+2025-04-11 08:53:26,091 INFO [Giuliani Study 1]        ReductionStep.java:105  | Stems free length median value: 70 pixels, 3.5 interlines
+2025-04-11 08:53:26,093 INFO [Giuliani Study 1]       StepMonitoring.java:98   | CUE_BEAMS
+2025-04-11 08:53:26,093 INFO [Giuliani Study 1]         CueBeamsStep.java:81   | Step CUE_BEAMS is skipped because small heads switch is off
+2025-04-11 08:53:26,094 INFO [Giuliani Study 1]       StepMonitoring.java:98   | TEXTS
+2025-04-11 08:53:26,636 INFO [Giuliani Study 1]             TextWord.java:268  |    Abnormal font ratio 9216668.01 TextWord{ "  " bounds[239,392,1863,228] conf:0.95 base[239,439]-[2102,439] codes[20,20] FontInfo{Times_New_Roman S-233}}
+2025-04-11 08:53:26,638 INFO [Giuliani Study 1]             TextWord.java:268  |    Abnormal font ratio 2.14 TextWord{ "A"." bounds[1113,818,36,48] conf:0.52 base[1113,869]-[1149,866] codes[41,22,2e] FontInfo{Times_New_Roman S-29}}
+2025-04-11 08:53:26,638 INFO [Giuliani Study 1]             TextWord.java:268  |    Abnormal font ratio 2.10 TextWord{ "‘S" bounds[2491,765,37,48] conf:0.56 base[2491,766]-[2528,763] codes[2018,53] FontInfo{Times_New_Roman S-29}}
+2025-04-11 08:53:26,677 INFO [Giuliani Study 1]       StepMonitoring.java:98   | MEASURES
+2025-04-11 08:53:26,681 INFO [Giuliani Study 1]                 Page.java:307  | 2 raw measures: [2 in system#1]
+2025-04-11 08:53:26,681 INFO [Giuliani Study 1]                 Page.java:307  | 15 raw measures: [5 in system#2, 5 in system#3, 5 in system#4]
+2025-04-11 08:53:26,681 INFO [Giuliani Study 1]                 Page.java:307  | 2 raw measures: [2 in system#5]
+2025-04-11 08:53:26,682 INFO [Giuliani Study 1]       StepMonitoring.java:98   | CHORDS
+2025-04-11 08:53:26,689 INFO [Giuliani Study 1]       StepMonitoring.java:98   | CURVES
+2025-04-11 08:53:27,172 INFO [Giuliani Study 1]         SlursBuilder.java:240  | Slurs: 0
+2025-04-11 08:53:27,175 INFO [Giuliani Study 1]      SegmentsBuilder.java:155  | Segments: 0
+2025-04-11 08:53:27,178 INFO [Giuliani Study 1]       StepMonitoring.java:98   | SYMBOLS
+2025-04-11 08:53:27,509 INFO [Giuliani Study 1]       StepMonitoring.java:98   | LINKS
+2025-04-11 08:53:27,521 INFO [Giuliani Study 1]       StepMonitoring.java:98   | RHYTHMS
+2025-04-11 08:53:27,541 INFO [Giuliani Study 1]       StepMonitoring.java:98   | PAGE
+2025-04-11 08:53:27,543 WARN [Giuliani Study 1]         MeasureFixer.java:343  | System#1 No target duration for measures local IDs [1, 2], please check time signatures
+2025-04-11 08:53:27,544 WARN [Giuliani Study 1]         MeasureFixer.java:343  | System#2 No target duration for measures local IDs [1, 2, 3, 4, 5], please check time signatures
+2025-04-11 08:53:27,544 WARN [Giuliani Study 1]         MeasureFixer.java:343  | System#3 No target duration for measures local IDs [6, 7, 8, 9, 10], please check time signatures
+2025-04-11 08:53:27,544 WARN [Giuliani Study 1]         MeasureFixer.java:343  | System#4 No target duration for measures local IDs [11, 12, 13, 14, 15], please check time signatures
+2025-04-11 08:53:27,544 WARN [Giuliani Study 1]         MeasureFixer.java:343  | System#5 No target duration for measures local IDs [1, 2], please check time signatures
+2025-04-11 08:53:27,545 INFO [Giuliani Study 1]                 Book.java:2550 | Book{Giuliani Study 1} storing
+2025-04-11 08:53:27,573 INFO [Giuliani Study 1]                 Book.java:2531 | Stored /book.xml
+2025-04-11 08:53:27,637 INFO [Giuliani Study 1]           DataHolder.java:348  | Stored /sheet#1/BINARY.png
+2025-04-11 08:53:27,976 INFO [Giuliani Study 1]                Sheet.java:1561 | Stored /sheet#1/sheet#1.xml
+2025-04-11 08:53:27,977 INFO [Giuliani Study 1]                 Book.java:2491 | Book stored as /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.omr
+2025-04-11 08:53:27,978 INFO [Giuliani Study 1]            SheetStub.java:1644 | Disposed sheet
+2025-04-11 08:53:28,011 INFO [Giuliani Study 1]                 Book.java:2018 | End of Stub#1 memory: 31,086,864
+2025-04-11 08:53:28,011 INFO [Giuliani Study 1]                 Book.java:2025 | Book processed.
+2025-04-11 08:53:28,162 INFO [Giuliani Study 1]            SheetStub.java:995  | Loaded /sheet#1/sheet#1.xml
+2025-04-11 08:53:28,296 INFO [Giuliani Study 1]      PartwiseBuilder.java:2661 | Exporting sheet(s): [#1]
+2025-04-11 08:53:28,311 INFO [Giuliani Study 1]        ScoreExporter.java:164  | Score Giuliani Study 1.mvt1 exported to /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.mvt1.mxl
+2025-04-11 08:53:28,311 INFO [Giuliani Study 1]      PartwiseBuilder.java:2661 | Exporting sheet(s): [#1]
+2025-04-11 08:53:28,322 INFO [Giuliani Study 1]        ScoreExporter.java:164  | Score Giuliani Study 1.mvt2 exported to /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.mvt2.mxl
+2025-04-11 08:53:28,322 INFO [Giuliani Study 1]      PartwiseBuilder.java:2661 | Exporting sheet(s): [#1]
+2025-04-11 08:53:28,324 INFO [Giuliani Study 1]        ScoreExporter.java:164  | Score Giuliani Study 1.mvt3 exported to /Users/martymavis/Develop/songplayer/src/assets/images/Giuliani Study 1.mvt3.mxl
+2025-04-11 08:53:28,374 INFO [Giuliani Study 1]                Score.java:181  | Closing {Score 1}
+2025-04-11 08:53:28,375 INFO [Giuliani Study 1]                Score.java:181  | Closing {Score 2}
+2025-04-11 08:53:28,375 INFO [Giuliani Study 1]                Score.java:181  | Closing {Score 3}
