@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Factory, Voice, StaveNote, Formatter, Barline, Dot } from 'vexflow';
+import { Factory, Voice, StaveNote, Formatter, Barline, Dot, TextNote } from 'vexflow';
 import { Note, StringFretNote } from '../types/SongTypes';
 import './VexStaffDisplay.css';
 
@@ -326,6 +326,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
     
+    // Clear previous content
     containerRef.current.innerHTML = '';
     
     const lastNoteTime = notes.length > 0 ? 
@@ -403,12 +404,38 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         
         // Only draw the line if it's after the clef and time signature
         if (x > CLEF_WIDTH) {
+          // Draw barline
           context.beginPath();
           context.moveTo(x, stave.getYForLine(0));
           context.lineTo(x, stave.getYForLine(4));
           context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
           context.setLineWidth(1);
           context.stroke();
+
+          // Draw measure number
+          const measureNumber = Math.floor(currentMeasureTime / beatsPerMeasure);
+          const yOffset = stave.getYForLine(0) - 15; // Position above the staff
+          
+          // Create SVG text element for measure number
+          const svgNS = "http://www.w3.org/2000/svg";
+          const text = document.createElementNS(svgNS, "text");
+          // Position at the start of the measure, accounting for clef width
+          const previousBarlineX = x - MEASURE_WIDTH;
+          const textX = Math.max(previousBarlineX + 5, CLEF_WIDTH + 5);
+          text.setAttributeNS(null, "x", textX.toString());
+          text.setAttributeNS(null, "y", yOffset.toString());
+          text.setAttributeNS(null, "font-family", "Arial");
+          text.setAttributeNS(null, "font-size", "10px");
+          text.setAttributeNS(null, "fill", nightMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)');
+          text.setAttributeNS(null, "data-measure-number", "true");
+          text.setAttributeNS(null, "text-anchor", "start");
+          text.textContent = measureNumber.toString();
+          
+          // Add text to SVG
+          const svg = containerRef.current?.querySelector('svg');
+          if (svg) {
+            svg.appendChild(text);
+          }
         }
         
         // Move to next measure boundary
@@ -465,9 +492,16 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     
     factoryRef.current = factory;
     
+    // Clean up function
     return () => {
       if (factoryRef.current) {
         factoryRef.current.reset();
+      }
+      // Remove measure number text elements
+      const svg = containerRef.current?.querySelector('svg');
+      if (svg) {
+        const texts = svg.querySelectorAll('text[data-measure-number]');
+        texts.forEach(text => text.remove());
       }
     };
   }, [notes, timeSignature, currentTime, nightMode]);
