@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Factory, Voice, StaveNote, Formatter, Barline } from 'vexflow';
+import { Factory, Voice, StaveNote, Formatter, Barline, Dot } from 'vexflow';
 import { Note, StringFretNote } from '../types/SongTypes';
 import './VexStaffDisplay.css';
 
@@ -80,7 +80,12 @@ function getPitchFromTab(note: StringFretNote): string {
  * Converts duration in beats to VexFlow duration string
  */
 function getVexflowDuration(duration: number): string {
-  if (duration === 2.0) return 'h';      // half note
+  // Handle dotted notes
+  if (duration === 3.0) return 'hd';     // dotted half note
+  else if (duration === 1.5) return 'qd'; // dotted quarter note
+  else if (duration === 0.75) return '8d'; // dotted eighth note
+  // Handle regular notes
+  else if (duration === 2.0) return 'h';  // half note
   else if (duration === 1.0) return 'q';  // quarter note
   else if (duration === 0.5) return '8';  // eighth note
   else if (duration === 0.25) return '16'; // sixteenth note
@@ -218,11 +223,16 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       const voiceCount = group.voiceCount || 1;
       // Create vertically stacked rests for simultaneous rests
       const restPositions = ['b/4', 'd/4']; // Positions for stacked rests
-      return new StaveNote({
+      const note = new StaveNote({
         keys: restPositions.slice(0, Math.min(voiceCount, 2)), // Limit to 2 stacked rests
         duration: getVexflowDuration(group.duration) + 'r',
         autoStem: true
-      });
+      }) as any;
+      // Add dot for dotted rests
+      if ([3.0, 1.5, 0.75].includes(group.duration)) {
+        Dot.buildAndAttach([note]);
+      }
+      return note;
     }
 
     if (!group.notes.length) {
@@ -240,11 +250,18 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
     });
     
     const duration = getVexflowDuration(group.duration);
-    return new StaveNote({
+    const staveNote = new StaveNote({
       keys,
       duration,
       autoStem: true
-    });
+    }) as any;
+
+    // Add dot for dotted notes
+    if ([3.0, 1.5, 0.75].includes(group.duration)) {
+      Dot.buildAndAttach([staveNote]);
+    }
+
+    return staveNote;
   });
 }
 

@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
+from collections import defaultdict
 
 def parse_duration(duration: str, divisions: int) -> float:
     """Convert MusicXML duration to beats"""
@@ -64,78 +65,44 @@ def get_note_info(note_elem: ET.Element, divisions: int) -> Optional[Dict[str, A
         "duration": duration
     }
 
-def combine_parts(xml_files: List[Path]) -> Dict[str, Any]:
-    """Combine multiple XML files into a single song structure"""
-    combined_notes = []
-    current_time = 0.0
+def combine_parts(parts):
+    """Combine multiple parts into a single timeline of notes"""
+    notes_by_time = defaultdict(list)
+    measure_number = 1  # Initialize measure counter
     
-    # Sort files by their movement number (extracted from filename)
-    sorted_files = sorted(xml_files, key=lambda x: int(x.stem.split('mvt')[-1]) if 'mvt' in x.stem else 0)
-    
-    metadata = {
-        "title": "",
-        "artist": "",
-        "bpm": 90,  # Default value
-        "timeSignature": [4, 4],  # Default value
-        "tuning": ["E2", "A2", "D3", "G3", "B3", "E4"]  # Standard guitar tuning
-    }
-    
-    for xml_file in sorted_files:
-        try:
-            tree = ET.parse(xml_file)
-            root = tree.getroot()
-            
-            # Handle different XML namespaces
-            ns = {'m': root.tag.split('}')[0].strip('{')} if '}' in root.tag else ''
-            ns_prefix = f"{{{ns}}}" if ns else ''
-            
-            # Get metadata from first file
-            if xml_file == sorted_files[0]:
-                # Try to get title
-                title_elem = root.find(f".//{ns_prefix}work-title")
-                if title_elem is not None:
-                    metadata["title"] = title_elem.text
-                
-                # Try to get composer
-                composer_elem = root.find(f".//{ns_prefix}creator[@type='composer']")
-                if composer_elem is not None:
-                    metadata["artist"] = composer_elem.text
-                
-                # Try to get time signature
-                time_elem = root.find(f".//{ns_prefix}time")
-                if time_elem is not None:
-                    beats = time_elem.find(f"{ns_prefix}beats")
-                    beat_type = time_elem.find(f"{ns_prefix}beat-type")
-                    if beats is not None and beat_type is not None:
-                        metadata["timeSignature"] = [int(beats.text), int(beat_type.text)]
-            
-            # Get divisions per quarter note
-            divisions_elem = root.find(f".//{ns_prefix}divisions")
-            if divisions_elem is None:
-                print(f"Warning: No divisions element found in {xml_file}")
-                continue
-            divisions = int(divisions_elem.text)
-            
-            # Process each part
-            for part in root.findall(f".//{ns_prefix}part"):
-                measure_time = current_time
-                
-                for measure in part.findall(f"{ns_prefix}measure"):
-                    # Process notes in the measure
-                    for note_elem in measure.findall(f"{ns_prefix}note"):
-                        note_info = get_note_info(note_elem, divisions)
-                        if note_info:
-                            note_info["time"] = measure_time
-                            combined_notes.append(note_info)
-                            measure_time += note_info["duration"]
-                
-                current_time = measure_time
-            
-        except Exception as e:
-            print(f"Error processing {xml_file}: {e}")
+    for part_path in parts:
+        # Parse the XML file
+        tree = ET.parse(part_path)
+        root = tree.getroot()
+        
+        # Get divisions from the first measure's attributes
+        first_measure = root.find('.//measure')
+        if first_measure is None:
             continue
+            
+        attributes = first_measure.find('attributes')
+        if attributes is None:
+            continue
+            
+        divisions_elem = attributes.find('divisions')
+        if divisions_elem is None:
+            continue
+            
+        divisions = int(divisions_elem.text)
+        
+        current_time = 0
+        for measure in root.findall('.//measure'):
+            for note in measure.findall('.//note'):
+                note_info = get_note_info(note, divisions)  # Pass divisions to get_note_info
+                if note_info:
+                    note_info['time'] = current_time
+                    note_info['measure'] = measure_number  # Add measure number to note info
+                    notes_by_time[current_time].append(note_info)
+                    current_time += note_info['duration']
+            measure_number += 1  # Increment measure number after each measure
     
-    return {**metadata, "notes": combined_notes}
+    # Convert defaultdict to regular dict
+    return dict(notes_by_time)
 
 def convert_to_json(xml_dir: Path, output_dir: Path):
     """Convert XML files to internal JSON format"""
@@ -151,67 +118,37 @@ def convert_to_json(xml_dir: Path, output_dir: Path):
     for base_name, xml_files in xml_groups.items():
         try:
             print(f"Converting {base_name} to JSON format...")
-            song_data = combine_parts(xml_files)
             
-            # Group notes by time
-            notes_by_time = {}
-            for note in song_data["notes"]:
-                # Round time to nearest 0.5 to fix floating point precision
-                time = round(note["time"] * 2) / 2
-                # Round duration to nearest 0.5 or 0.333333 (for triplets)
-                duration = note["duration"]
-                if abs(duration - round(duration * 3) / 3) < 0.01:  # Close to a triplet
-                    duration = round(duration * 3) / 3
-                else:
-                    duration = round(duration * 2) / 2
-                
-                note["time"] = time
-                note["duration"] = duration
-                
-                # Group notes that occur at exactly the same time
-                if time not in notes_by_time:
-                    notes_by_time[time] = []
-                notes_by_time[time].append(note)
+            # Get notes from all parts
+            notes_by_time = combine_parts(xml_files)
             
-            # Sort notes and format them
-            formatted_notes = []
-            last_time = -1
-            for time in sorted(notes_by_time.keys()):
-                notes = notes_by_time[time]
-                
-                # Add empty line between groups if there's a gap
-                if last_time >= 0:
-                    formatted_notes.append("\n")
-                
-                # Sort notes at same time by pitch (higher pitch first)
-                notes.sort(key=lambda x: float('-inf') if 'rest' in x else int(x['note'][-1]) * 12 + {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}[x['note'][0]], reverse=True)
-                
-                # Add all notes that occur at this time
-                for note in notes:
-                    if 'rest' in note:
-                        formatted_note = { "rest": True, "time": time, "duration": note["duration"] }
-                    else:
-                        formatted_note = { "note": note["note"], "time": time, "duration": note["duration"] }
-                    formatted_notes.append(formatted_note)
-                
-                last_time = time
+            # Parse the first XML file for metadata
+            tree = ET.parse(xml_files[0])
+            root = tree.getroot()
             
-            # Save to JSON file with normalized filename and condensed format
+            # Extract metadata
+            work = root.find('.//work-title')
+            title = work.text if work is not None else base_name
+            
+            composer = root.find('.//creator[@type="composer"]')
+            artist = composer.text if composer is not None else "Unknown"
+            
+            # Default metadata for studies
+            metadata = {
+                "title": title if "study" not in base_name.lower() else "Study No. 1",
+                "artist": artist,
+                "bpm": 92,  # Standard tempo for studies
+                "timeSignature": [3, 4],  # Common time signature for guitar studies
+                "tuning": ["E4", "B3", "G3", "D3", "A2", "E2"]  # Standard guitar tuning
+            }
+            
+            # Save to JSON file with normalized filename
             json_filename = base_name.lower().replace(" ", "-") + ".json"
             json_path = output_dir / json_filename
             
-            # Format the metadata part with consistent order and format
-            metadata = {
-                "title": "Study No. 1" if "study" in base_name.lower() else song_data["title"],
-                "artist": song_data["artist"],
-                "bpm": 92,  # Standard tempo for studies
-                "timeSignature": [3, 4],  # Common time signature for guitar studies
-                "tuning": song_data["tuning"]
-            }
-            
-            # Custom JSON formatting
+            # Format and write the JSON file
             with open(json_path, 'w') as f:
-                # Write metadata part
+                # Write metadata with 2-space indentation
                 f.write('{\n')
                 f.write('  "title": ' + json.dumps(metadata["title"]) + ',\n')
                 f.write('  "artist": ' + json.dumps(metadata["artist"]) + ',\n')
@@ -220,35 +157,27 @@ def convert_to_json(xml_dir: Path, output_dir: Path):
                 f.write('  "tuning": ' + json.dumps(metadata["tuning"]) + ',\n')
                 f.write('  "notes": [\n')
                 
-                # Write notes
-                first_group = True
-                for time in sorted(notes_by_time.keys()):
+                # Write notes in compact format
+                times = sorted(notes_by_time.keys())
+                for i, time in enumerate(times):
                     notes = notes_by_time[time]
                     
-                    # Add blank line between groups
-                    if not first_group:
-                        f.write('\n')
-                    first_group = False
-                    
-                    # Sort notes at same time by pitch (higher pitch first)
-                    notes.sort(key=lambda x: float('-inf') if 'rest' in x else int(x['note'][-1]) * 12 + {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}[x['note'][0]], reverse=True)
-                    
                     # Write all notes at this time
-                    for i, note in enumerate(notes):
-                        if i > 0:
-                            f.write(',\n')
+                    for j, note in enumerate(notes):
+                        # Format note data in compact single-line format
                         if 'rest' in note:
-                            note_str = '    { "rest": true, "time": ' + str(note["time"]) + ', "duration": ' + str(note["duration"]) + ' }'
+                            note_str = f'    {{ "rest": true, "time": {note["time"]}, "duration": {note["duration"]}, "measure": {note["measure"]} }}'
                         else:
-                            note_str = '    { "note": "' + note["note"] + '", "time": ' + str(note["time"]) + ', "duration": ' + str(note["duration"]) + ' }'
-                        f.write(note_str)
-                    
-                    # Add comma after group if not last group
-                    if time != max(notes_by_time.keys()):
-                        f.write(',')
+                            note_str = f'    {{ "note": "{note["note"]}", "time": {note["time"]}, "duration": {note["duration"]}, "measure": {note["measure"]} }}'
+                        
+                        # Add comma if not the last note
+                        if i < len(times) - 1 or j < len(notes) - 1:
+                            note_str += ','
+                        
+                        f.write(note_str + '\n')
                 
                 # Close array and object
-                f.write('\n  ]\n')
+                f.write('  ]\n')
                 f.write('}\n')
             
             print(f"Successfully converted {base_name}")

@@ -3,10 +3,11 @@ import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
 import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
-import { STORAGE_KEYS, getFromStorage } from './utils/localStorage';
+import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
 
 // Define available songs metadata
 const songList = [
+  { id: 'roses', name: 'Give Me the Roses While I Live', filename: 'roses.json' },
   { id: 'giuliani-study-1', name: 'Giuliani Study No. 1', filename: 'giuliani-study-1.json' },
   { id: 'scarborough-fair', name: 'Scarborough Fair', filename: 'scarborough-fair.json' },
   { id: 'when-the-swallows', name: 'When The Swallows', filename: 'when-the-swallows.json' },
@@ -54,6 +55,7 @@ function App() {
     const selectedSong = songList.find(song => song.id === e.target.value);
     if (selectedSong) {
       loadSong(selectedSong.filename);
+      saveToStorage(STORAGE_KEYS.CURRENT_SONG, selectedSong.id);
     }
   };
 
