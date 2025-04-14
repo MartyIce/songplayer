@@ -331,7 +331,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   // Calculate target scroll position for centering
   const calculateTargetScrollLeft = useCallback((containerWidth: number): number => {
     const ret = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + (CLEF_WIDTH / 2);
-    console.log('calculateTargetScrollLeft, ret', ret);
     return ret;
   }, [currentTime, SCROLL_SCALE]);
 
@@ -581,7 +580,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         
         // Use requestAnimationFrame for smoother scrolling
         requestAnimationFrame(() => {
-          console.log('note activation effect, targetScrollLeft', targetScrollLeft);
           scrollContainerRef.current?.scrollTo({
             left: targetScrollLeft,
             behavior: 'auto'
@@ -600,7 +598,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       // Use requestAnimationFrame for smoother zoom transitions
       requestAnimationFrame(() => {
-        console.log('zoomLevelChanges, targetScrollLeft', targetScrollLeft);
         scrollContainerRef.current?.scrollTo({
           left: targetScrollLeft,
           behavior: 'auto'

@@ -1,15 +1,16 @@
 // Local storage keys
 export const STORAGE_KEYS = {
-  TEMPO: 'songplayer_tempo',
-  LOOP_ENABLED: 'songplayer_loop_enabled',
-  CURRENT_SONG: 'songplayer_current_song',
-  GUITAR_TYPE: 'songplayer_guitar_type',
-  LOOP_START: 'songplayer_loop_start',
-  LOOP_END: 'songplayer_loop_end',
-  METRONOME_ENABLED: 'songplayer_metronome_enabled',
-  MUTE: 'songplayer_mute',
-  NIGHT_MODE: 'songplayer_night_mode'
-};
+  TEMPO: 'tempo',
+  LOOP_ENABLED: 'loopEnabled',
+  CURRENT_SONG: 'currentSong',
+  GUITAR_TYPE: 'guitarType',
+  LOOP_START: 'loopStart',
+  LOOP_END: 'loopEnd',
+  METRONOME_ENABLED: 'metronomeEnabled',
+  MUTE: 'mute',
+  NIGHT_MODE: 'nightMode',
+  ZOOM_LEVEL: 'zoomLevel'
+} as const;
 
 // Save a value to local storage
 export const saveToStorage = (key: string, value: any) => {
