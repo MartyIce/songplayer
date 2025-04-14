@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Factory, Voice, StaveNote, Formatter, Barline, Dot } from 'vexflow';
-import { Note, StringFretNote } from '../types/SongTypes';
+import { Note, StringFretNote, ChordData } from '../types/SongTypes';
 import { useZoom } from '../contexts/ZoomContext';
 import './VexStaffDisplay.css';
 
@@ -12,6 +12,7 @@ interface VexStaffDisplayProps {
   loopStart?: number;
   loopEnd?: number;
   nightMode?: boolean;
+  chords?: ChordData[];
 }
 
 interface GroupedNote {
@@ -301,7 +302,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   loopEnabled = false,
   loopStart = 0,
   loopEnd = 0,
-  nightMode = false
+  nightMode = false,
+  chords = []
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const factoryRef = useRef<Factory | null>(null);
@@ -456,6 +458,21 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           if (svg) {
             svg.appendChild(text);
           }
+
+          // Draw chord if exists for this measure
+          const chord = chords.find(c => c.measure === measureNumber);
+          if (chord && svg) {
+            const chordText = document.createElementNS(svgNS, "text");
+            chordText.setAttributeNS(null, "x", textX.toString());
+            chordText.setAttributeNS(null, "y", (yOffset - 15).toString()); // Position above measure number
+            chordText.setAttributeNS(null, "font-family", "Arial");
+            chordText.setAttributeNS(null, "font-size", "12px");
+            chordText.setAttributeNS(null, "fill", nightMode ? '#61dafb' : '#0066cc');
+            chordText.setAttributeNS(null, "data-chord", "true");
+            chordText.setAttributeNS(null, "text-anchor", "start");
+            chordText.textContent = chord.chord;
+            svg.appendChild(chordText);
+          }
         }
         
         // Move to next measure boundary
@@ -520,11 +537,11 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Remove measure number text elements using stored ref
       const svg = currentContainer?.querySelector('svg');
       if (svg) {
-        const texts = svg.querySelectorAll('text[data-measure-number]');
+        const texts = svg.querySelectorAll('text[data-measure-number], text[data-chord]');
         texts.forEach(text => text.remove());
       }
     };
-  }, [notes, timeSignature, currentTime, nightMode, MEASURE_WIDTH, SCROLL_SCALE]);
+  }, [notes, timeSignature, currentTime, nightMode, MEASURE_WIDTH, SCROLL_SCALE, chords]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {

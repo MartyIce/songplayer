@@ -19,6 +19,17 @@ export interface RestNote extends BaseNote {
 
 export type Note = PitchNote | StringFretNote | RestNote;
 
+export interface ChordData {
+  chord: string;
+  measure: number;
+}
+
+export interface ChordMarker {
+  chord: string;
+  time: number;
+  measure: number;
+}
+
 export interface SongData {
   title: string;
   artist: string;
@@ -26,4 +37,5 @@ export interface SongData {
   timeSignature: [number, number];
   tuning?: string[];
   notes: Note[];
+  chords?: ChordData[];
 } 

@@ -4,6 +4,12 @@
   "bpm": 92,
   "timeSignature": [3, 4],
   "tuning": ["E4", "B3", "G3", "D3", "A2", "E2"],
+  "chords": [
+    { "chord": "G", "measure": 1 },
+    { "chord": "D", "measure": 5 },
+    { "chord": "D", "measure": 6 },
+    { "chord": "G", "measure": 7 }
+  ],
   "notes": [
     { "note": "B4", "time": 0, "duration": 1.0, "measure": 1 },
     { "note": "A4", "time": 1.0, "duration": 1.0, "measure": 1 },

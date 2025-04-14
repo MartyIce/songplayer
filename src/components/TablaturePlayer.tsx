@@ -737,6 +737,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         loopStart={loopStart}
         loopEnd={loopEnd}
         nightMode={nightMode}
+        chords={originalSong.chords}
       />
       
       <div 
