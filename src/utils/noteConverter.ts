@@ -48,23 +48,10 @@ function findBestPosition(midiNote: number, tuning: string[]): { string: number;
   const tuningMidi = [40, 45, 50, 55, 59, 64]; // E2, A2, D3, G3, B3, E4
   const stringNames = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];
   
-  // Debug output
-  console.log('\n=== Debug Info ===');
-  console.log('Target note MIDI:', midiNote);
-  console.log('String tunings MIDI:', tuningMidi);
-  stringNames.forEach((note, i) => {
-    console.log(`String ${6-i}: ${note} = MIDI ${tuningMidi[i]}`);
-  });
-  console.log('================\n');
-
   // Try each string
   tuningMidi.forEach((openString, index) => {
     const stringNumber = 6 - index; // Convert to string numbers (6 to 1, from low to high)
     const fret = midiNote - openString;
-    
-    console.log(`\nTrying string ${stringNumber} (${stringNames[index]})`);
-    console.log(`Open string MIDI: ${openString}`);
-    console.log(`Required fret: ${fret}`);
     
     // Check if this position is playable (fret >= 0 and reasonable)
     if (fret >= 0 && fret <= 15) {
@@ -89,15 +76,11 @@ function findBestPosition(midiNote: number, tuning: string[]): { string: number;
         const distanceFromMiddle = Math.abs(3.5 - stringNumber);
         score += distanceFromMiddle * 25;
         
-        console.log(`Valid position found: string ${stringNumber}, fret ${fret}`);
-        console.log(`Score: ${score}`);
-        
         // Update if this is the best position so far
         if (score < bestScore) {
           bestScore = score;
           bestString = stringNumber;
           bestFret = fret;
-          console.log(`New best position: string ${bestString}, fret ${bestFret} (score: ${score})`);
         }
       }
     }
@@ -108,27 +91,8 @@ function findBestPosition(midiNote: number, tuning: string[]): { string: number;
     throw new Error(`Cannot find playable position for note: ${midiNote}`);
   }
 
-  console.log(`\nFinal selected position: string ${bestString}, fret ${bestFret} (score: ${bestScore})`);
   return { string: bestString, fret: bestFret };
 }
-
-// Test function to verify the algorithm
-function testNoteConversion(noteStr: string) {
-  console.log(`\nTesting note: ${noteStr}`);
-  const midiNote = noteToMidi(noteStr);
-  console.log(`MIDI number: ${midiNote}`);
-  const position = findBestPosition(midiNote, ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']);
-  console.log(`Result: string ${position.string}, fret ${position.fret}`);
-  return position;
-}
-
-// Run test cases
-console.log('\n=== Running Test Cases ===');
-const e4Result = testNoteConversion('E4');
-const c5Result = testNoteConversion('C5');
-console.log('\n=== Test Results ===');
-console.log('E4:', e4Result);
-console.log('C5:', c5Result);
 
 export function convertNoteToStringFret(
   noteData: { note?: string; time: number; duration: number; color?: string; rest?: boolean },
@@ -149,9 +113,7 @@ export function convertNoteToStringFret(
     throw new Error('Note data must have either a note or rest property');
   }
 
-  console.log('Converting note:', noteData.note);
   const midiNote = noteToMidi(noteData.note);
-  console.log(`Note ${noteData.note} converted to MIDI: ${midiNote}`);
   const position = findBestPosition(midiNote, tuning);
 
   return {
