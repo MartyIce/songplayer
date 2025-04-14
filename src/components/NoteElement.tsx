@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect, useRef, useCallback } from 'react';
-import * as Tone from 'tone';
+import React, { useMemo } from 'react';
+import { useZoom } from '../contexts/ZoomContext';
 import { StringFretNote } from '../types/SongTypes';
 import './NoteElement.css';
 
@@ -12,37 +12,20 @@ interface NoteElementProps {
 const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    // Keep the ref for potential future use, but no need to track width
-    const updateContainerWidth = () => {
-      // No need to set state that's not used
-    };
+  const { zoomLevel } = useZoom();
+  const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
 
-    // Initial setup
-    updateContainerWidth();
-
-    // Add a small delay to ensure the container is properly rendered
-    const timeoutId = setTimeout(updateContainerWidth, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  // Determine if the note is active (being played)
+  // Calculate if note is active or past
   const isActive = useMemo(() => {
-    return currentTime >= note.time && currentTime <= note.time + note.duration;
+    return note.time <= currentTime && note.time + note.duration > currentTime;
   }, [note.time, note.duration, currentTime]);
-  
-  // Determine if the note is past (already played)
+
   const isPast = useMemo(() => {
-    return currentTime > note.time + note.duration;
+    return note.time + note.duration <= currentTime;
   }, [note.time, note.duration, currentTime]);
 
   // Calculate position and width based on time and duration
   const noteStyle = useMemo(() => {
-    const basePixelsPerBeat = 60; // Match the parent component
-    
     // Calculate width based on note duration in beats
     const width = note.duration * basePixelsPerBeat;
     
@@ -80,31 +63,14 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
       userSelect: 'none' as const,
       boxShadow: isActive ? '0 0 8px rgba(97, 218, 251, 0.8)' : 'none',
     };
-  }, [note.time, note.duration, note.string, isActive, isPast]);
+  }, [note.time, note.duration, note.string, isActive, isPast, basePixelsPerBeat]);
 
-  // Handle click to play note
-  const handleClick = useCallback(() => {
-    const frequency = Tone.Frequency(TUNING[note.string - 1]).transpose(note.fret).toFrequency();
-    const synth = new Tone.Synth().toDestination();
-    synth.triggerAttackRelease(frequency, "8n");
-  }, [note.string, note.fret]);
-  
   return (
     <div 
-      className={`note-element ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`}
+      className={`note-element ${isActive ? 'active' : ''}`} 
       style={noteStyle}
-      onClick={handleClick}
-      ref={containerRef}
     >
-      <div className="note-content">
-        <span className="fret-number">{note.fret}</span>
-      </div>
-      {isActive && (
-        <div 
-          className="progress-indicator" 
-          style={{ width: `${((currentTime - note.time) / note.duration) * 100}%` }}
-        />
-      )}
+      {note.fret}
     </div>
   );
 };

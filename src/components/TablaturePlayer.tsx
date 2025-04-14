@@ -9,6 +9,8 @@ import VexStaffDisplay from './VexStaffDisplay';
 import { convertSongToStringFret } from '../utils/noteConverter';
 import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
 import { STORAGE_KEYS, saveToStorage, getFromStorage } from '../utils/localStorage';
+import { useZoom } from '../contexts/ZoomContext';
+import ZoomControls from './ZoomControls';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -41,7 +43,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     return [song, song];
   }, [song]);
 
-  const basePixelsPerBeat = 60;
+  const { zoomLevel } = useZoom();
+  const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
   
   // State declarations
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -260,11 +263,28 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Auto-scroll during playback
   useEffect(() => {
     if (isPlaying && currentTime > 0 && containerRef.current && !isManualScrolling) {
-      const basePixelsPerBeat = 60;
       const containerWidth = containerRef.current.clientWidth;
-      setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
+      const newOffset = containerWidth / 2 - (currentTime * basePixelsPerBeat);
+      
+      // Use requestAnimationFrame for smoother scrolling
+      requestAnimationFrame(() => {
+        setScrollOffset(newOffset);
+      });
     }
   }, [isPlaying, currentTime, basePixelsPerBeat, isManualScrolling]);
+
+  // Update scroll position when zoom changes
+  useEffect(() => {
+    if (containerRef.current && !isManualScrolling) {
+      const containerWidth = containerRef.current.clientWidth;
+      const newOffset = containerWidth / 2 - (currentTime * basePixelsPerBeat);
+      
+      // Use requestAnimationFrame for smoother zoom transitions
+      requestAnimationFrame(() => {
+        setScrollOffset(newOffset);
+      });
+    }
+  }, [basePixelsPerBeat, currentTime, isManualScrolling]);
 
   // Update current time based on Transport position
   useEffect(() => {
@@ -661,12 +681,12 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const minWidth = 1000; // Minimum width in pixels
     const durationBasedWidth = songDuration * basePixelsPerBeat;
     return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
-  }, [songDuration]);
+  }, [songDuration, basePixelsPerBeat]);
 
   // Update getLoopMarkerPosition to be relative to the start of the content
-  const getLoopMarkerPosition = (time: number) => {
+  const getLoopMarkerPosition = useCallback((time: number) => {
     return time * basePixelsPerBeat;
-  };
+  }, [basePixelsPerBeat]);
 
   // Handle loop enabled/disabled
   const handleLoopEnabledChange = useCallback((enabled: boolean) => {
@@ -788,6 +808,13 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         </div>
 
         <div className="trigger-line" />
+      </div>
+      <div className="controls-container">
+        <div className="controls-row">
+          <div className="control-group">
+            <ZoomControls />
+          </div>
+        </div>
       </div>
     </div>
   );

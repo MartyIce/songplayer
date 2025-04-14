@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Controls.css';
 import { GuitarType } from '../utils/GuitarSampler';
 import LoopPointAdjuster from './LoopPointAdjuster';
+import ZoomControls from './ZoomControls';
 
 interface ControlsProps {
   isPlaying: boolean;
@@ -293,6 +294,9 @@ const Controls: React.FC<ControlsProps> = ({
             />
             <span>Night Mode</span>
           </label>
+
+          <div className="control-separator" />
+          <ZoomControls />
         </div>
       </div>
 

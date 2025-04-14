@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Factory, Voice, StaveNote, Formatter, Barline, Dot, TextNote } from 'vexflow';
 import { Note, StringFretNote } from '../types/SongTypes';
+import { useZoom } from '../contexts/ZoomContext';
 import './VexStaffDisplay.css';
 
 interface VexStaffDisplayProps {
@@ -48,13 +49,11 @@ octave lower at E2).
 
 // Constants
 const TUNING = ['E5', 'B4', 'G4', 'D4', 'A3', 'E3']; // Standard guitar tuning (written pitch, high to low)
-const SCROLL_SCALE = 60; // Scaling factor to synchronize with tab view - aligned with basePixelsPerBeat in TablaturePlayer
-
-// Stave rendering constants
+const BASE_SCROLL_SCALE = 60; // Base scaling factor to synchronize with tab view
 const VISIBLE_WIDTH = 1000; // Visible width of the score display
 const STAVE_LEFT_PADDING = 20; // Padding to the left of the stave
 const CLEF_WIDTH = 90; // Width needed for clef and time signature
-const MEASURE_WIDTH = 240; // Width per measure (adjusted for better spacing and aligned with tablature)
+const BASE_MEASURE_WIDTH = 240; // Base width per measure (adjusted for better spacing and aligned with tablature)
 
 /**
  * Converts string/fret to pitch note
@@ -270,7 +269,8 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
  */
 function positionNotes(groupedNotes: GroupedNote[], 
                       voice: Voice, 
-                      stave: any): void {
+                      stave: any,
+                      scrollScale: number): void {
   // Get all tickables in the voice
   const tickables = voice.getTickables();
   
@@ -279,19 +279,10 @@ function positionNotes(groupedNotes: GroupedNote[],
     if (index < tickables.length) {
       const tickable = tickables[index];
       // Set the x position based on the same scale factor as grid lines
-      const xPos = (group.time * SCROLL_SCALE);
+      const xPos = (group.time * scrollScale);
       tickable.setXShift(xPos - tickable.getX());
     }
   });
-}
-
-// Function to get X position for a note at a given time
-function getXPositionForTime(time: number, totalWidth: number, totalDuration: number): number {
-  // Calculate position based on time and scroll scale to match tablature
-  const clefWidth = CLEF_WIDTH; // Width for clef and time signature
-  
-  // Position is based on time * scale factor, plus clef width offset
-  return clefWidth + (time * SCROLL_SCALE);
 }
 
 /**
@@ -322,6 +313,25 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
+  const { zoomLevel } = useZoom();
+  
+  // Apply zoom to scaling factors
+  const SCROLL_SCALE = BASE_SCROLL_SCALE * zoomLevel;
+  const MEASURE_WIDTH = BASE_MEASURE_WIDTH * zoomLevel;
+
+  // Function to get X position for a note at a given time
+  const getXPositionForTime = useCallback((time: number): number => {
+    // Calculate position based on time and scroll scale to match tablature
+    const clefWidth = CLEF_WIDTH; // Width for clef and time signature
+    
+    // Position is based on time * scale factor, plus clef width offset
+    return clefWidth + (time * SCROLL_SCALE);
+  }, [SCROLL_SCALE]);
+
+  // Helper to get the X position for loop markers
+  const getLoopMarkerPosition = useCallback((time: number): number => {
+    return getXPositionForTime(time);
+  }, [getXPositionForTime]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -385,7 +395,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         .formatToStave([voice], stave);
       
       // Apply custom positioning based on note timing
-      positionNotes(groupedNotes, voice, stave);
+      positionNotes(groupedNotes, voice, stave, SCROLL_SCALE);
       
       stave.setBegBarType(Barline.type.SINGLE);
       stave.setEndBarType(Barline.type.END);
@@ -519,7 +529,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     
     // Update active note position
     if (activeNote) {
-      const position = getXPositionForTime(activeNote.time, totalWidth, totalDuration);
+      const position = getXPositionForTime(activeNote.time);
       setActiveNotePos(position);
       
       // Find and update active note visualization
@@ -559,11 +569,32 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         const containerWidth = scrollContainerRef.current.clientWidth;
         const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
         
-        // Use direct positioning to maintain synchronization with tab view
-        scrollContainerRef.current.scrollLeft = targetScrollLeft;
+        // Use requestAnimationFrame for smoother scrolling
+        requestAnimationFrame(() => {
+          scrollContainerRef.current?.scrollTo({
+            left: targetScrollLeft,
+            behavior: 'auto'
+          });
+        });
       }
     }
-  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging, nightMode]);
+  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging, nightMode, SCROLL_SCALE]);
+
+  // Handle zoom level changes
+  useEffect(() => {
+    if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+      
+      // Use requestAnimationFrame for smoother zoom transitions
+      requestAnimationFrame(() => {
+        scrollContainerRef.current?.scrollTo({
+          left: targetScrollLeft,
+          behavior: 'auto'
+        });
+      });
+    }
+  }, [SCROLL_SCALE, currentTime, activeNotePos, manualScrollMode, isDragging]);
 
   // Mouse event handlers for dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -624,11 +655,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       scrollContainerRef.current.scrollLeft = targetScrollLeft;
     }
   }, [currentTime]);
-
-  // Helper to get the X position for loop markers
-  const getLoopMarkerPosition = (time: number): number => {
-    return getXPositionForTime(time, totalWidth, totalDuration);
-  };
 
   // Auto-scrolling for following the music
   useEffect(() => {

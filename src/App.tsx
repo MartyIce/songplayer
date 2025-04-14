@@ -4,6 +4,7 @@ import TablaturePlayer from './components/TablaturePlayer';
 import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
+import { ZoomProvider } from './contexts/ZoomContext';
 
 // Define available songs metadata
 const songList = [
@@ -64,22 +65,24 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={`${process.env.PUBLIC_URL}/string-slinger.png`} alt="String Slinger" className="logo" />
-      </header>
-      <main>
-        {currentSong && (
-          <TablaturePlayer 
-            song={currentSong} 
-            songList={songList}
-            currentSongId={songList.find(song => song.name === currentSong.title)?.id || songList[0].id}
-            onSongChange={handleSongChange}
-            isLoading={isLoading}
-          />
-        )}
-      </main>
-    </div>
+    <ZoomProvider>
+      <div className="App">
+        <header className="App-header">
+          <img src={`${process.env.PUBLIC_URL}/string-slinger.png`} alt="String Slinger" className="logo" />
+        </header>
+        <main>
+          {currentSong && (
+            <TablaturePlayer 
+              song={currentSong} 
+              songList={songList}
+              currentSongId={songList.find(song => song.name === currentSong.title)?.id || songList[0].id}
+              onSongChange={handleSongChange}
+              isLoading={isLoading}
+            />
+          )}
+        </main>
+      </div>
+    </ZoomProvider>
   );
 }
 
