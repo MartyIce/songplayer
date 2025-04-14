@@ -8,8 +8,8 @@ interface NoteElementProps {
   currentTime: number;
 }
 
-// Standard guitar tuning (actual sounding pitches, high to low)
-const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
+// Remove or comment out the unused TUNING constant
+// const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Standard guitar tuning
 
 const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
   const { zoomLevel } = useZoom();

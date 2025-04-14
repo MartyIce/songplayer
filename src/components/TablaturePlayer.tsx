@@ -61,8 +61,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     return savedLoopEnd !== null ? savedLoopEnd : song.notes[song.notes.length - 1].time + song.notes[song.notes.length - 1].duration;
   });
   const [isDragging, setIsDragging] = useState(false);
-  const [scrollOffset, setScrollOffset] = useState(0);
   const [startX, setStartX] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
   const [isManualScrolling, setIsManualScrolling] = useState(false);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
   const [nightMode, setNightMode] = useState(() => getFromStorage(STORAGE_KEYS.NIGHT_MODE, false));
@@ -72,7 +72,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const synth = useRef<Tone.PolySynth | null>(null);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const tablatureContentRef = useRef<HTMLDivElement>(null);
-  const dragTimeout = useRef<NodeJS.Timeout>();
   const scheduledNotes = useRef<number[]>([]);
   const metronomePart = useRef<Tone.Part | null>(null);
   

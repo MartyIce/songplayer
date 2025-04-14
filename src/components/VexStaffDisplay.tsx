@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Factory, Voice, StaveNote, Formatter, Barline, Dot, TextNote } from 'vexflow';
+import { Factory, Voice, StaveNote, Formatter, Barline, Dot } from 'vexflow';
 import { Note, StringFretNote } from '../types/SongTypes';
 import { useZoom } from '../contexts/ZoomContext';
 import './VexStaffDisplay.css';
@@ -328,6 +328,13 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     return clefWidth + (time * SCROLL_SCALE);
   }, [SCROLL_SCALE]);
 
+  // Calculate target scroll position for centering
+  const calculateTargetScrollLeft = useCallback((containerWidth: number): number => {
+    const ret = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + (CLEF_WIDTH / 2);
+    console.log('calculateTargetScrollLeft, ret', ret);
+    return ret;
+  }, [currentTime, SCROLL_SCALE]);
+
   // Helper to get the X position for loop markers
   const getLoopMarkerPosition = useCallback((time: number): number => {
     return getXPositionForTime(time);
@@ -338,6 +345,9 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     
     // Clear previous content
     containerRef.current.innerHTML = '';
+    
+    // Store ref value for cleanup
+    const currentContainer = containerRef.current;
     
     const lastNoteTime = notes.length > 0 ? 
       Math.max(...notes.map(note => note.time + note.duration)) : 
@@ -508,14 +518,14 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       if (factoryRef.current) {
         factoryRef.current.reset();
       }
-      // Remove measure number text elements
-      const svg = containerRef.current?.querySelector('svg');
+      // Remove measure number text elements using stored ref
+      const svg = currentContainer?.querySelector('svg');
       if (svg) {
         const texts = svg.querySelectorAll('text[data-measure-number]');
         texts.forEach(text => text.remove());
       }
     };
-  }, [notes, timeSignature, currentTime, nightMode]);
+  }, [notes, timeSignature, currentTime, nightMode, MEASURE_WIDTH, SCROLL_SCALE]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {
@@ -567,10 +577,11 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // If in auto-scroll mode, center on current playback position
       if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
         const containerWidth = scrollContainerRef.current.clientWidth;
-        const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+        const targetScrollLeft = calculateTargetScrollLeft(containerWidth);
         
         // Use requestAnimationFrame for smoother scrolling
         requestAnimationFrame(() => {
+          console.log('note activation effect, targetScrollLeft', targetScrollLeft);
           scrollContainerRef.current?.scrollTo({
             left: targetScrollLeft,
             behavior: 'auto'
@@ -578,23 +589,25 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         });
       }
     }
-  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, manualScrollMode, isDragging, nightMode, SCROLL_SCALE]);
+  }, [notes, currentTime, timeSignature, totalWidth, totalDuration, activeNotePos, 
+    manualScrollMode, isDragging, nightMode, SCROLL_SCALE, getXPositionForTime, calculateTargetScrollLeft]);
 
   // Handle zoom level changes
   useEffect(() => {
     if (!manualScrollMode && !isDragging && scrollContainerRef.current && activeNotePos !== null) {
       const containerWidth = scrollContainerRef.current.clientWidth;
-      const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+      const targetScrollLeft = calculateTargetScrollLeft(containerWidth);
       
       // Use requestAnimationFrame for smoother zoom transitions
       requestAnimationFrame(() => {
+        console.log('zoomLevelChanges, targetScrollLeft', targetScrollLeft);
         scrollContainerRef.current?.scrollTo({
           left: targetScrollLeft,
           behavior: 'auto'
         });
       });
     }
-  }, [SCROLL_SCALE, currentTime, activeNotePos, manualScrollMode, isDragging]);
+  }, [SCROLL_SCALE, activeNotePos, manualScrollMode, isDragging, calculateTargetScrollLeft]);
 
   // Mouse event handlers for dragging
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -646,15 +659,15 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     setManualScrollMode(!manualScrollMode);
   }, [manualScrollMode]);
 
-  // Add resume auto-scroll handler
+  // Update handleResumeAutoScroll to use the new function
   const handleResumeAutoScroll = useCallback(() => {
     setManualScrollMode(false);
     if (scrollContainerRef.current) {
       const containerWidth = scrollContainerRef.current.clientWidth;
-      const targetScrollLeft = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + CLEF_WIDTH;
+      const targetScrollLeft = calculateTargetScrollLeft(containerWidth);
       scrollContainerRef.current.scrollLeft = targetScrollLeft;
     }
-  }, [currentTime]);
+  }, [calculateTargetScrollLeft]);
 
   // Auto-scrolling for following the music
   useEffect(() => {

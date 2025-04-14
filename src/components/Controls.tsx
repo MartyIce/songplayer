@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Controls.css';
 import { GuitarType } from '../utils/GuitarSampler';
 import LoopPointAdjuster from './LoopPointAdjuster';
@@ -64,6 +64,7 @@ const Controls: React.FC<ControlsProps> = ({
   const [tempTimeEnd, setTempTimeEnd] = useState<string>('');
   const [tempMeasureStart, setTempMeasureStart] = useState<string>('');
   const [tempMeasureEnd, setTempMeasureEnd] = useState<string>('');
+  const [currentMeasure, setCurrentMeasure] = useState<string>('');
 
   // Format time as MM:SS
   const formatTime = (time: number) => {
@@ -77,13 +78,13 @@ const Controls: React.FC<ControlsProps> = ({
     return time.toFixed(2);
   };
 
-  // Format measure.beat
-  const getMeasureTime = (time: number) => {
+  // Wrap getMeasureTime in useCallback
+  const getMeasureTime = useCallback((time: number) => {
     const beatsPerMeasure = timeSignature[0];
     const measure = Math.floor(time / beatsPerMeasure) + 1;
     const beat = ((time % beatsPerMeasure) + 1).toFixed(2);
     return `${measure}.${beat}`;
-  };
+  }, [timeSignature]);
 
   // Handle time input change - now only updates temporary state
   const handleTimeInputChange = (value: string, isStart: boolean) => {
@@ -167,7 +168,7 @@ const Controls: React.FC<ControlsProps> = ({
     setTempTimeEnd(formatTimeDecimal(loopEnd));
     setTempMeasureStart(getMeasureTime(loopStart));
     setTempMeasureEnd(getMeasureTime(loopEnd));
-  }, [loopStart, loopEnd]);
+  }, [loopStart, loopEnd, getMeasureTime]);
 
   // Calculate slider percentage for styling
   const getSliderStyle = (value: number, min: number, max: number) => {
@@ -196,6 +197,13 @@ const Controls: React.FC<ControlsProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (currentTime !== null) {
+      const measureTime = getMeasureTime(currentTime);
+      setCurrentMeasure(measureTime);
+    }
+  }, [currentTime, getMeasureTime]);
+
   return (
     <div className="controls">
       <div className="top-controls">
@@ -208,6 +216,7 @@ const Controls: React.FC<ControlsProps> = ({
           </button>
           <div className="time-display">
             {formatTime(currentTime)} / {formatTime(duration)}
+            <span className="measure-display">M{currentMeasure}</span>
           </div>
         </div>
 
