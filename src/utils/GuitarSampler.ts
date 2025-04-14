@@ -3,7 +3,8 @@ import * as Tone from 'tone';
 export type GuitarType = 'acoustic' | 'electric' | 'nylon';
 
 export class GuitarSampler {
-    private sampler: Tone.Sampler | null = null;
+    private notesSampler: Tone.Sampler | null = null;
+    private chordsSampler: Tone.Sampler | null = null;
     private isLoaded: boolean = false;
     private currentType: GuitarType = 'acoustic';
     private activeNotes: Set<string> = new Set();
@@ -55,8 +56,11 @@ export class GuitarSampler {
     public async switchGuitar(type: GuitarType) {
         this.stopAllNotes(); // Stop any playing notes before switching
         this.isLoaded = false;
-        if (this.sampler) {
-            this.sampler.dispose();
+        if (this.notesSampler) {
+            this.notesSampler.dispose();
+        }
+        if (this.chordsSampler) {
+            this.chordsSampler.dispose();
         }
         this.currentType = type;
         await this.initializeSampler(type);
@@ -78,15 +82,33 @@ export class GuitarSampler {
         progress.textContent = `Loading ${type} guitar samples...`;
         document.body.appendChild(progress);
 
-        // Initialize the sampler with our notes
-        this.sampler = new Tone.Sampler({
-            urls: this.notesByType[type],
-            baseUrl: this.getBaseUrl(type),
-            onload: () => {
+        let loadedCount = 0;
+        const checkLoaded = () => {
+            loadedCount++;
+            if (loadedCount === 2) {
                 this.isLoaded = true;
                 console.log(`${type} guitar samples loaded successfully`);
                 progress.remove();
-            },
+            }
+        };
+
+        // Initialize the notes sampler
+        this.notesSampler = new Tone.Sampler({
+            urls: this.notesByType[type],
+            baseUrl: this.getBaseUrl(type),
+            onload: checkLoaded,
+            onerror: (error) => {
+                console.error(`Error loading ${type} guitar samples:`, error);
+                progress.textContent = `Error loading ${type} guitar samples. Please refresh.`;
+                setTimeout(() => progress.remove(), 3000);
+            }
+        }).toDestination();
+
+        // Initialize the chords sampler
+        this.chordsSampler = new Tone.Sampler({
+            urls: this.notesByType[type],
+            baseUrl: this.getBaseUrl(type),
+            onload: checkLoaded,
             onerror: (error) => {
                 console.error(`Error loading ${type} guitar samples:`, error);
                 progress.textContent = `Error loading ${type} guitar samples. Please refresh.`;
@@ -95,38 +117,35 @@ export class GuitarSampler {
         }).toDestination();
     }
 
-    public playNote(note: string, time: number, duration: number) {
-        if (this.sampler && this.isLoaded) {
-            console.log('Playing note:', {
-                note,
-                duration: `${duration.toFixed(3)}s`,
-                time: time ? `${time.toFixed(3)}s` : 'now',
-                type: this.currentType
-            });
-            this.sampler.triggerAttackRelease(note, duration, time);
-            this.activeNotes.add(note);
-            // Remove note from active notes after duration
-            Tone.Transport.schedule(() => {
-                this.activeNotes.delete(note);
-            }, time + duration);
+    public playNote(note: string, time: number, duration: number, volume: number | null = null) {
+        if (!this.notesSampler || !this.chordsSampler || !this.isLoaded) return;
+        
+        // Convert duration to seconds if it's not already
+        const durationInSeconds = typeof duration === 'number' ? duration : 1;
+
+        if (volume !== null) {
+            // This is a chord note - use the chords sampler
+            this.chordsSampler.volume.value = Tone.gainToDb(volume);
+            this.chordsSampler.triggerAttackRelease(note, durationInSeconds, time);
+        } else {
+            // This is a regular note - use the notes sampler at full volume
+            this.notesSampler.volume.value = 0; // 0 dB is full volume
+            this.notesSampler.triggerAttackRelease(note, durationInSeconds, time);
         }
     }
 
     public stopAllNotes() {
-        if (this.sampler) {
-            // Release all active notes
-            this.activeNotes.forEach(note => {
-                this.sampler?.triggerRelease(note, Tone.now());
-            });
-            this.activeNotes.clear();
-            
-            // Also call releaseAll as a safety measure
-            this.sampler.releaseAll();
+        if (this.notesSampler) {
+            this.notesSampler.releaseAll();
         }
+        if (this.chordsSampler) {
+            this.chordsSampler.releaseAll();
+        }
+        this.activeNotes.clear();
     }
 
     public isReady(): boolean {
-        return this.isLoaded && this.sampler !== null;
+        return this.isLoaded && this.notesSampler !== null && this.chordsSampler !== null;
     }
 
     public getCurrentType(): GuitarType {

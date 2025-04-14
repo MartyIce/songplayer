@@ -16,6 +16,10 @@ interface ControlsProps {
   onBpmChange: (bpm: number) => void;
   metronomeEnabled: boolean;
   onMetronomeChange: (enabled: boolean) => void;
+  chordsEnabled: boolean;
+  onChordsChange: (enabled: boolean) => void;
+  chordsVolume: number;
+  onChordsVolumeChange: (volume: number) => void;
   isMuted: boolean;
   onMuteChange: (muted: boolean) => void;
   loopEnabled: boolean;
@@ -44,6 +48,10 @@ const Controls: React.FC<ControlsProps> = ({
   onBpmChange,
   metronomeEnabled,
   onMetronomeChange,
+  chordsEnabled,
+  onChordsChange,
+  chordsVolume,
+  onChordsVolumeChange,
   isMuted,
   onMuteChange,
   loopEnabled,
@@ -276,6 +284,30 @@ const Controls: React.FC<ControlsProps> = ({
             />
             <span>Enable Metronome</span>
           </label>
+
+          <label className="control-checkbox">
+            <input
+              type="checkbox"
+              checked={chordsEnabled}
+              onChange={(e) => onChordsChange(e.target.checked)}
+            />
+            <span>Enable Chords</span>
+          </label>
+
+          {chordsEnabled && (
+            <div className="volume-control">
+              <label>Chords Volume</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={chordsVolume}
+                onChange={(e) => onChordsVolumeChange(parseFloat(e.target.value))}
+                style={getSliderStyle(chordsVolume, 0, 1)}
+              />
+            </div>
+          )}
 
           <label className="control-checkbox">
             <input

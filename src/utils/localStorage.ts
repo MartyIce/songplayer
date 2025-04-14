@@ -9,7 +9,9 @@ export const STORAGE_KEYS = {
   METRONOME_ENABLED: 'metronomeEnabled',
   MUTE: 'mute',
   NIGHT_MODE: 'nightMode',
-  ZOOM_LEVEL: 'zoomLevel'
+  ZOOM_LEVEL: 'zoomLevel',
+  CHORDS_ENABLED: 'chordsEnabled',
+  CHORDS_VOLUME: 'chordsVolume',
 } as const;
 
 // Save a value to local storage

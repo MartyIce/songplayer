@@ -53,6 +53,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const [guitarType, setGuitarType] = useState<GuitarType>(() => getFromStorage(STORAGE_KEYS.GUITAR_TYPE, 'acoustic'));
   const [metronomeEnabled, setMetronomeEnabled] = useState(() => getFromStorage(STORAGE_KEYS.METRONOME_ENABLED, false));
+  const [chordsEnabled, setChordsEnabled] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_ENABLED, true));
+  const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
   const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
   const [loopEnabled, setLoopEnabled] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_ENABLED, false));
   const [loopStart, setLoopStart] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_START, 0));
@@ -151,72 +153,80 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
 
     if (noteToPlay) {
-      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration * (60 / Tone.Transport.bpm.value));
+      guitarSampler.playNote(noteToPlay, Tone.now(), note.duration * (60 / Tone.Transport.bpm.value), null);
     }
   }, [isMuted]);
 
   // Play a chord using the guitar sampler
   const playChord = useCallback((chord: string, duration: number) => {
-    if (!guitarSampler.isReady() || isMuted) {
-      console.log('Skipping chord - sampler not ready or muted:', { ready: guitarSampler.isReady(), muted: isMuted });
+    if (!guitarSampler.isReady() || isMuted || !chordsEnabled) {
       return;
     }
 
     const durationInSeconds = duration * (60 / Tone.Transport.bpm.value);
-    console.log('Attempting to play chord:', {
-      chord,
-      duration: `${duration} beats`,
-      durationInSeconds: `${durationInSeconds.toFixed(3)}s`,
-      bpm: Tone.Transport.bpm.value
-    });
 
-    // Define common chord shapes (you can expand this)
+    // Define common chord shapes
     const chordShapes: { [key: string]: string[] } = {
       'A': ['A2', 'E3', 'A3', 'C#4', 'E4'],
       'Am': ['A2', 'E3', 'A3', 'C4', 'E4'],
+      'A7': ['A2', 'E3', 'G3', 'C#4', 'E4'],
       'C': ['C3', 'E3', 'G3', 'C4', 'E4'],
       'D': ['D3', 'A3', 'D4', 'F#4'],
       'Dm': ['D3', 'A3', 'D4', 'F4'],
       'E': ['E2', 'B2', 'E3', 'G#3', 'B3', 'E4'],
       'Em': ['E2', 'B2', 'E3', 'G3', 'B3', 'E4'],
       'G': ['G2', 'B2', 'D3', 'G3', 'B3', 'G4'],
-      // Add more chord shapes as needed
     };
 
     // Extract the base chord name (e.g., "Am" from "Am7")
     const baseChord = chord.replace(/[0-9]/g, '');
     
     if (chordShapes[baseChord]) {
-      console.log('Playing chord shape:', {
-        chord: baseChord,
-        notes: chordShapes[baseChord],
-        strumDuration: `${(chordShapes[baseChord].length * 0.02).toFixed(3)}s total strum`
-      });
       // Play each note in the chord with a slight strum effect
       chordShapes[baseChord].forEach((note, index) => {
         const strumDelay = index * 0.02; // 20ms between each note for natural strum sound
-        guitarSampler.playNote(note, Tone.now() + strumDelay, durationInSeconds);
+        guitarSampler.playNote(note, Tone.now() + strumDelay, durationInSeconds, chordsVolume);
       });
-    } else {
-      console.warn('No chord shape found for:', baseChord, 'from original chord:', chord);
     }
-  }, [isMuted]);
+  }, [isMuted, chordsEnabled, chordsVolume]);
 
-  // Define scheduleNotes with useCallback before it's used
-  const scheduleNotes = useCallback((startBeat = 0) => {
+  // Schedule chords
+  const scheduleChords = useCallback((startTime: number) => {
+    if (!song.chords || !chordsEnabled) return;
+
+    // Calculate beats per measure from time signature
+    const beatsPerMeasure = song.timeSignature[0];
+
+    // Schedule chords from the current measure
+    song.chords.forEach(({ chord, measure }) => {
+      // Convert measure number to beat time (measure numbers start at 1)
+      const chordTime = (measure - 1) * beatsPerMeasure;
+      
+      // Only schedule if the chord is after our start time and within loop bounds if looping
+      if (chordTime >= startTime && (!loopEnabled || (chordTime >= loopStart && chordTime < loopEnd))) {
+        const id = Tone.Transport.schedule((time) => {
+          playChord(chord, beatsPerMeasure);
+        }, chordTime * (60 / Tone.Transport.bpm.value));
+        scheduledNotes.current.push(id);
+      }
+    });
+  }, [song.chords, chordsEnabled, song.timeSignature, loopEnabled, loopStart, loopEnd, playChord]);
+
+  // Modify scheduleNotes to always schedule individual notes
+  const scheduleNotes = useCallback((startTime: number) => {
     // Clear any previously scheduled notes
     scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
     scheduledNotes.current = [];
 
     if (isMuted) return; // Don't schedule notes if muted
 
-    // Schedule each note that comes after startBeat
+    // Schedule each note that comes after startTime
     processedSong.notes
       .filter((note: Note) => {
         if (loopEnabled) {
-          return note.time >= startBeat && note.time < loopEnd;
+          return note.time >= startTime && note.time < loopEnd;
         }
-        return note.time >= startBeat;
+        return note.time >= startTime;
       })
       .forEach((note: Note) => {
         const timeInSeconds = note.time * (60 / Tone.Transport.bpm.value);
@@ -226,35 +236,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         scheduledNotes.current.push(id);
       });
 
-    // Schedule chords if they exist
-    if (originalSong.chords && originalSong.chords.length > 0) {
-      const [beatsPerMeasure] = song.timeSignature;
-      
-      originalSong.chords
-        .filter(chord => {
-          // Adjust for 1-based measure indexing by subtracting 1 from measure
-          const chordTime = (chord.measure - 1) * beatsPerMeasure;
-          if (loopEnabled) {
-            return chordTime >= startBeat && chordTime < loopEnd;
-          }
-          return chordTime >= startBeat;
-        })
-        .forEach(chord => {
-          // Adjust for 1-based measure indexing by subtracting 1 from measure
-          const chordTime = (chord.measure - 1) * beatsPerMeasure;
-          const timeInSeconds = chordTime * (60 / Tone.Transport.bpm.value);
-          
-          const id = Tone.Transport.schedule(time => {
-            console.log('Playing scheduled chord:', {
-              chord: chord.chord,
-              measure: chord.measure,
-              adjustedTime: chordTime,
-              seconds: timeInSeconds
-            });
-            playChord(chord.chord, beatsPerMeasure);
-          }, timeInSeconds);
-          scheduledNotes.current.push(id);
-        });
+    // Schedule chords if they exist and are enabled
+    if (chordsEnabled) {
+      scheduleChords(startTime);
     }
 
     // Schedule loop if enabled
@@ -280,7 +264,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       }, loopEndTime);
       scheduledNotes.current.push(loopId);
     }
-  }, [loopEnabled, loopEnd, loopStart, isMuted, processedSong.notes, playNote, originalSong.chords, song.timeSignature, playChord]);
+  }, [loopEnabled, loopEnd, loopStart, isMuted, processedSong.notes, playNote, scheduleChords, chordsEnabled]);
   
   // Update visible notes based on current time
   useEffect(() => {
@@ -772,6 +756,28 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     saveToStorage(STORAGE_KEYS.NIGHT_MODE, enabled);
   }, []);
 
+  // Handle chords enabled/disabled
+  const handleChordsEnabledChange = useCallback((enabled: boolean) => {
+    setChordsEnabled(enabled);
+    saveToStorage(STORAGE_KEYS.CHORDS_ENABLED, enabled);
+  }, []);
+
+  // Handle chords volume change
+  const handleChordsVolumeChange = useCallback((volume: number) => {
+    setChordsVolume(volume);
+    saveToStorage(STORAGE_KEYS.CHORDS_VOLUME, volume);
+
+    // If we're currently playing, reschedule notes to apply the new volume
+    if (isPlaying) {
+      // Clear existing scheduled notes
+      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+      scheduledNotes.current = [];
+      
+      // Reschedule from current position with new volume
+      scheduleNotes(currentTime);
+    }
+  }, [isPlaying, currentTime, scheduleNotes]);
+
   return (
     <div className="tablature-player" ref={containerRef}>
       <Controls
@@ -786,6 +792,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         onBpmChange={handleBpmChange}
         metronomeEnabled={metronomeEnabled}
         onMetronomeChange={handleMetronomeChange}
+        chordsEnabled={chordsEnabled}
+        onChordsChange={handleChordsEnabledChange}
+        chordsVolume={chordsVolume}
+        onChordsVolumeChange={handleChordsVolumeChange}
         isMuted={isMuted}
         onMuteChange={handleMuteChange}
         loopEnabled={loopEnabled}
