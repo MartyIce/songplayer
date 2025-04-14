@@ -420,8 +420,9 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           const svgNS = "http://www.w3.org/2000/svg";
           const text = document.createElementNS(svgNS, "text");
           // Position at the start of the measure, accounting for clef width
-          const previousBarlineX = x - MEASURE_WIDTH;
-          const textX = Math.max(previousBarlineX + 5, CLEF_WIDTH + 5);
+          const textX = measureNumber === 1 ? 
+            Math.max(CLEF_WIDTH + 5, x - MEASURE_WIDTH + 5) : // First measure after clef
+            ((CLEF_WIDTH + ((currentMeasureTime - beatsPerMeasure) * SCROLL_SCALE)) + 5); // Other measures start at their barline
           text.setAttributeNS(null, "x", textX.toString());
           text.setAttributeNS(null, "y", yOffset.toString());
           text.setAttributeNS(null, "font-family", "Arial");
