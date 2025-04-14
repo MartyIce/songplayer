@@ -97,6 +97,12 @@ export class GuitarSampler {
 
     public playNote(note: string, time: number, duration: number) {
         if (this.sampler && this.isLoaded) {
+            console.log('Playing note:', {
+                note,
+                duration: `${duration.toFixed(3)}s`,
+                time: time ? `${time.toFixed(3)}s` : 'now',
+                type: this.currentType
+            });
             this.sampler.triggerAttackRelease(note, duration, time);
             this.activeNotes.add(note);
             // Remove note from active notes after duration

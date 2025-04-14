@@ -155,6 +155,53 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isMuted]);
 
+  // Play a chord using the guitar sampler
+  const playChord = useCallback((chord: string, duration: number) => {
+    if (!guitarSampler.isReady() || isMuted) {
+      console.log('Skipping chord - sampler not ready or muted:', { ready: guitarSampler.isReady(), muted: isMuted });
+      return;
+    }
+
+    const durationInSeconds = duration * (60 / Tone.Transport.bpm.value);
+    console.log('Attempting to play chord:', {
+      chord,
+      duration: `${duration} beats`,
+      durationInSeconds: `${durationInSeconds.toFixed(3)}s`,
+      bpm: Tone.Transport.bpm.value
+    });
+
+    // Define common chord shapes (you can expand this)
+    const chordShapes: { [key: string]: string[] } = {
+      'A': ['A2', 'E3', 'A3', 'C#4', 'E4'],
+      'Am': ['A2', 'E3', 'A3', 'C4', 'E4'],
+      'C': ['C3', 'E3', 'G3', 'C4', 'E4'],
+      'D': ['D3', 'A3', 'D4', 'F#4'],
+      'Dm': ['D3', 'A3', 'D4', 'F4'],
+      'E': ['E2', 'B2', 'E3', 'G#3', 'B3', 'E4'],
+      'Em': ['E2', 'B2', 'E3', 'G3', 'B3', 'E4'],
+      'G': ['G2', 'B2', 'D3', 'G3', 'B3', 'G4'],
+      // Add more chord shapes as needed
+    };
+
+    // Extract the base chord name (e.g., "Am" from "Am7")
+    const baseChord = chord.replace(/[0-9]/g, '');
+    
+    if (chordShapes[baseChord]) {
+      console.log('Playing chord shape:', {
+        chord: baseChord,
+        notes: chordShapes[baseChord],
+        strumDuration: `${(chordShapes[baseChord].length * 0.02).toFixed(3)}s total strum`
+      });
+      // Play each note in the chord with a slight strum effect
+      chordShapes[baseChord].forEach((note, index) => {
+        const strumDelay = index * 0.02; // 20ms between each note for natural strum sound
+        guitarSampler.playNote(note, Tone.now() + strumDelay, durationInSeconds);
+      });
+    } else {
+      console.warn('No chord shape found for:', baseChord, 'from original chord:', chord);
+    }
+  }, [isMuted]);
+
   // Define scheduleNotes with useCallback before it's used
   const scheduleNotes = useCallback((startBeat = 0) => {
     // Clear any previously scheduled notes
@@ -179,6 +226,37 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         scheduledNotes.current.push(id);
       });
 
+    // Schedule chords if they exist
+    if (originalSong.chords && originalSong.chords.length > 0) {
+      const [beatsPerMeasure] = song.timeSignature;
+      
+      originalSong.chords
+        .filter(chord => {
+          // Adjust for 1-based measure indexing by subtracting 1 from measure
+          const chordTime = (chord.measure - 1) * beatsPerMeasure;
+          if (loopEnabled) {
+            return chordTime >= startBeat && chordTime < loopEnd;
+          }
+          return chordTime >= startBeat;
+        })
+        .forEach(chord => {
+          // Adjust for 1-based measure indexing by subtracting 1 from measure
+          const chordTime = (chord.measure - 1) * beatsPerMeasure;
+          const timeInSeconds = chordTime * (60 / Tone.Transport.bpm.value);
+          
+          const id = Tone.Transport.schedule(time => {
+            console.log('Playing scheduled chord:', {
+              chord: chord.chord,
+              measure: chord.measure,
+              adjustedTime: chordTime,
+              seconds: timeInSeconds
+            });
+            playChord(chord.chord, beatsPerMeasure);
+          }, timeInSeconds);
+          scheduledNotes.current.push(id);
+        });
+    }
+
     // Schedule loop if enabled
     if (loopEnabled) {
       const loopEndTime = loopEnd * (60 / Tone.Transport.bpm.value);
@@ -202,7 +280,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       }, loopEndTime);
       scheduledNotes.current.push(loopId);
     }
-  }, [loopEnabled, loopEnd, loopStart, isMuted, processedSong.notes, playNote]);
+  }, [loopEnabled, loopEnd, loopStart, isMuted, processedSong.notes, playNote, originalSong.chords, song.timeSignature, playChord]);
   
   // Update visible notes based on current time
   useEffect(() => {
@@ -299,11 +377,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           return;
         }
         
-        // Not using the delta, but keeping it for future debugging
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const _ = timestamp - lastTime;
-        lastTime = timestamp;
-
         const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
         
         if (loopEnabled) {

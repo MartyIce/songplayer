@@ -6,6 +6,9 @@
   "tuning": ["E4", "B3", "G3", "D3", "A2", "E2"],
   "chords": [
     { "chord": "G", "measure": 1 },
+    { "chord": "G", "measure": 2 },
+    { "chord": "G", "measure": 3 },
+    { "chord": "G", "measure": 4 },
     { "chord": "D", "measure": 5 },
     { "chord": "D", "measure": 6 },
     { "chord": "G", "measure": 7 }

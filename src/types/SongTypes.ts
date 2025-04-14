@@ -22,6 +22,7 @@ export type Note = PitchNote | StringFretNote | RestNote;
 export interface ChordData {
   chord: string;
   measure: number;
+  time: number;
 }
 
 export interface ChordMarker {
