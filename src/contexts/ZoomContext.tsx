@@ -13,11 +13,11 @@ export const ZoomProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [zoomLevel, setZoomLevel] = useState(1); // 1 is default zoom level
 
   const increaseZoom = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev + 0.25, 2)); // Max zoom is 2x
+    setZoomLevel(prev => Math.min(prev + 0.2, 2)); // Max zoom is 2x
   }, []);
 
   const decreaseZoom = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Min zoom is 0.5x
+    setZoomLevel(prev => Math.max(prev - 0.2, 0.4)); // Min zoom is 0.1x
   }, []);
 
   return (

@@ -9,7 +9,7 @@ const ZoomControls: React.FC = () => {
     <div className="zoom-controls">
       <button 
         onClick={decreaseZoom}
-        disabled={zoomLevel <= 0.5}
+        disabled={zoomLevel <= 0.4}
         title="Zoom Out"
       >
         -
