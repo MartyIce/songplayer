@@ -41,7 +41,7 @@ const GuitarString: React.FC<GuitarStringProps> = ({ stringNumber }) => {
       }}
       data-string={stringNumber}
     >
-      <div className="string-label">{stringNumber}</div>
+      <div className="string-label">{tuning}</div>
       <div className="string-tuning">{tuning}</div>
     </div>
   );

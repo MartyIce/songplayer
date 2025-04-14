@@ -9,7 +9,6 @@
 
 .string-label {
   position: absolute;
-  left: 15px;
   top: 50%;
   transform: translateY(-50%);
   color: #4e3926; /* Dark wood color */
