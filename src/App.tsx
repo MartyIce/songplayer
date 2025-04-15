@@ -6,6 +6,41 @@ import { convertSongToStringFret } from './utils/noteConverter';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
 import { ZoomProvider } from './contexts/ZoomContext';
 
+// Custom hook to detect mobile devices and orientation
+const useMobileDetection = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      // Use a more reliable detection method - we're considering any device under 1024px as "mobile"
+      const mobile = window.innerWidth <= 1024;
+      const landscape = window.innerWidth > window.innerHeight;
+      
+      console.log('Device detection:', { 
+        width: window.innerWidth, 
+        height: window.innerHeight, 
+        isMobile: mobile, 
+        isLandscape: landscape 
+      });
+      
+      setIsMobile(mobile);
+      setIsLandscape(landscape);
+    };
+    
+    checkMobile(); // Check initially
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
+
+  return { isMobile, isLandscape };
+};
+
 // Define available songs metadata
 const songList = [
   { id: 'roses', name: 'Give Me the Roses While I Live', filename: 'roses.json' },
@@ -19,6 +54,7 @@ function App() {
   const [currentSong, setCurrentSong] = useState<SongData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isMobile, isLandscape } = useMobileDetection();
 
   // Load initial song
   useEffect(() => {
@@ -64,6 +100,36 @@ function App() {
     return <div className="error-message">Error: {error}</div>;
   }
 
+  // Mobile landscape layout
+  if (isMobile && isLandscape) {
+    return (
+      <ZoomProvider>
+        <div className="App App-mobile-landscape">
+          <header className="App-header-mobile-landscape">
+            <img 
+              src={`${process.env.PUBLIC_URL}/string-slinger.png`} 
+              alt="String Slinger" 
+              className="logo-mobile" 
+              style={{ 
+                height: '40px', 
+                margin: '10px',
+                position: 'absolute',
+                top: '5px',
+                left: '5px'
+              }}
+            />
+          </header>
+          <main>
+            {currentSong && (
+              <>THIS IS MOBILE TAB PLAYER</>
+            )}
+          </main>
+        </div>
+      </ZoomProvider>
+    );
+  }
+
+  // Default desktop layout
   return (
     <ZoomProvider>
       <div className="App">

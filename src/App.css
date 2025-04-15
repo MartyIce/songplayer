@@ -31,4 +31,25 @@ main {
   background-color: #ffebee;
   border-radius: 4px;
   margin: 20px;
+}
+
+/* Mobile landscape styles */
+.App-mobile-landscape {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.App-header-mobile-landscape {
+  height: 50px;
+  background-color: #282c34;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.logo-mobile {
+  height: 40px;
+  object-fit: contain;
 } 
