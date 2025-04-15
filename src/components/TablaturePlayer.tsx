@@ -20,6 +20,66 @@ interface TablaturePlayerProps {
   isLoading: boolean;
 }
 
+// Custom hook to detect mobile devices and orientation
+const useMobileDetection = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      // Use a more reliable detection method - we're considering any device under 1024px as "mobile"
+      const mobile = window.innerWidth <= 1024;
+      const landscape = window.innerWidth > window.innerHeight;
+      
+      console.log('Device detection:', { 
+        width: window.innerWidth, 
+        height: window.innerHeight, 
+        isMobile: mobile, 
+        isLandscape: landscape 
+      });
+      
+      setIsMobile(mobile);
+      setIsLandscape(landscape);
+    };
+    
+    checkMobile(); // Check initially
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
+
+  return { isMobile, isLandscape };
+};
+
+// Simple Mobile Landscape placeholder component
+const MobileLandscapeTablaturePlayer: React.FC<TablaturePlayerProps> = (props) => {
+  return (
+    <div className="mobile-landscape-tablature-player" style={{
+      backgroundColor: '#f0f0f0',
+      padding: '20px',
+      border: '3px solid red',
+      borderRadius: '10px',
+      margin: '10px',
+      textAlign: 'center',
+      height: '90vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center'
+    }}>
+      <h2 style={{ color: '#333', fontSize: '24px' }}>This is mobile landscape view</h2>
+      <p style={{ color: '#666', fontSize: '18px' }}>Mobile-optimized view coming soon!</p>
+      <p style={{ fontSize: '14px', marginTop: '20px' }}>
+        Screen dimensions: {window.innerWidth}x{window.innerHeight}
+      </p>
+    </div>
+  );
+};
+
 const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ 
   song,
   songList,
@@ -903,4 +963,22 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   );
 };
 
-export default TablaturePlayer; 
+// Wrapper component to choose between desktop and mobile views
+const TablaturePlayerWrapper: React.FC<TablaturePlayerProps> = (props) => {
+  const { isMobile, isLandscape } = useMobileDetection();
+  
+  // Log detection info for debugging
+  console.log('TablaturePlayerWrapper render:', { isMobile, isLandscape });
+  
+  // TEMPORARY for testing: Just check if window is in landscape orientation
+  // Instead of checking both isMobile && isLandscape
+  if (window.innerWidth > window.innerHeight) {
+    console.log('Rendering mobile landscape view');
+    return <MobileLandscapeTablaturePlayer {...props} />;
+  }
+  
+  console.log('Rendering desktop view');
+  return <TablaturePlayer {...props} />;
+};
+
+export default TablaturePlayerWrapper; 
