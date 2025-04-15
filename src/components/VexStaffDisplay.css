@@ -17,6 +17,27 @@
   background-color: #1a1a1a;
 }
 
+/* Night mode styles for staff elements */
+.vex-staff-display[data-night-mode="true"] svg path,
+.vex-staff-display[data-night-mode="true"] svg rect,
+.vex-staff-display[data-night-mode="true"] svg circle,
+.vex-staff-display[data-night-mode="true"] svg text,
+.vex-staff-display[data-night-mode="true"] svg line,
+.vex-staff-display[data-night-mode="true"] .vf-stave path,
+.vex-staff-display[data-night-mode="true"] .vf-clef,
+.vex-staff-display[data-night-mode="true"] .vf-timesig {
+  stroke: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* Exception for active notes */
+.vex-staff-display[data-night-mode="true"] .vf-stavenote[data-active="true"] path,
+.vex-staff-display[data-night-mode="true"] .vf-stavenote[data-active="true"] text,
+.vex-staff-display[data-night-mode="true"] .vf-notehead[data-active="true"] {
+  stroke: #61dafb !important;
+  fill: #61dafb !important;
+}
+
 /* Scrollable container for the staff */
 .staff-scroll-container {
   width: 100%;

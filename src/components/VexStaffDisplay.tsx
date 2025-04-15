@@ -386,6 +386,12 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       stave.setWidth(calculatedWidth - (STAVE_LEFT_PADDING * 2));
       
+      // Set staff color based on night mode
+      if (nightMode) {
+        context.setStrokeStyle('#FFFFFF');
+        context.setFillStyle('#FFFFFF');
+      }
+      
       // Group notes by time to handle chords
       const groupedNotes = groupNotesByTime(notes, currentTime, timeSignature);
       
@@ -448,7 +454,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           text.setAttributeNS(null, "y", yOffset.toString());
           text.setAttributeNS(null, "font-family", "Arial");
           text.setAttributeNS(null, "font-size", "10px");
-          text.setAttributeNS(null, "fill", nightMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)');
+          text.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.6)');
           text.setAttributeNS(null, "data-measure-number", "true");
           text.setAttributeNS(null, "text-anchor", "start");
           text.textContent = measureNumber.toString();
@@ -467,7 +473,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
             chordText.setAttributeNS(null, "y", (yOffset - 15).toString()); // Position above measure number
             chordText.setAttributeNS(null, "font-family", "Arial");
             chordText.setAttributeNS(null, "font-size", "12px");
-            chordText.setAttributeNS(null, "fill", nightMode ? '#61dafb' : '#0066cc');
+            chordText.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : '#0066cc');
             chordText.setAttributeNS(null, "data-chord", "true");
             chordText.setAttributeNS(null, "text-anchor", "start");
             chordText.textContent = chord.chord;
