@@ -171,17 +171,35 @@
 
 .sheet-loop-marker .measure-info {
   position: absolute;
-  top: 0px; /* Changed from -20px to 0px since we added padding to parent */
+  top: 0px;
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(97, 218, 251, 0.9);
   color: white;
-  padding: 2px 6px;
+  padding: 4px 6px;
   border-radius: 4px;
   font-size: 12px;
-  white-space: nowrap;
+  white-space: pre-line; /* Allow line breaks */
   z-index: 11;
-  pointer-events: none;
+  pointer-events: auto; /* Make text selectable */
+  user-select: text; /* Make text selectable */
+  cursor: text; /* Show text cursor */
+  text-align: center; /* Center the text */
+  min-width: 50px; /* Ensure consistent width */
+  line-height: 1.4; /* Add some spacing between lines */
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Add gap between lines */
+}
+
+.sheet-loop-marker .measure-info .measure-label {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.sheet-loop-marker .measure-info .measure-value {
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .sheet-loop-start-marker {

@@ -418,9 +418,19 @@
   border-radius: 4px;
   text-align: center;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  white-space: nowrap;
+  white-space: pre-line;
   min-width: 110px;
+  user-select: text;
+  cursor: text;
+}
+
+.measure-display {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  opacity: 0.9;
 }
 
 .control-checkbox {

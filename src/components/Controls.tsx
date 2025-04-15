@@ -223,8 +223,8 @@ const Controls: React.FC<ControlsProps> = ({
             ⏹ Stop
           </button>
           <div className="time-display">
-            {formatTime(currentTime)} / {formatTime(duration)}
-            <span className="measure-display">M{currentMeasure}</span>
+            <div>{formatTime(currentTime)} / {formatTime(duration)}</div>
+            <div className="measure-display">M{currentMeasure}</div>
           </div>
         </div>
 
