@@ -96,7 +96,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }, 50);
   }, [loopStart]);
 
-  const { playNote, playChord, scheduleNotes, clearScheduledNotes } = useNotePlayer({
+  const { scheduleNotes, clearScheduledNotes } = useNotePlayer({
     isMuted,
     chordsEnabled,
     chordsVolume,
@@ -211,7 +211,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       Tone.Transport.start();
       setIsPlaying(true);
     }
-  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling]);
+  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling, processedSong]);
   
   const handlePlayPause = useCallback(async () => {
     if (isPlaying) {
@@ -572,7 +572,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Update current time based on Transport position
   useEffect(() => {
     let animationFrame: number;
-    let lastTime = 0;
     let lastKnownTime = 0;
 
     const updateTime = (timestamp: number) => {

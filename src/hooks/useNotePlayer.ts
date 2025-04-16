@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import { useCallback, useRef } from 'react';
-import { Note, StringFretNote } from '../types/SongTypes';
+import { Note } from '../types/SongTypes';
 import { guitarSampler } from '../utils/GuitarSampler';
 
 interface UseNotePlayerProps {
