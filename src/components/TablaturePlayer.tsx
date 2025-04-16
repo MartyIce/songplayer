@@ -13,6 +13,7 @@ import { useZoom } from '../contexts/ZoomContext';
 import ZoomControls from './ZoomControls';
 import { useNotePlayer } from '../hooks/useNotePlayer';
 import { useMetronome } from '../shared/hooks/useMetronome';
+import { useLoopControl } from '../shared/hooks/useLoopControl';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -57,12 +58,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [chordsEnabled, setChordsEnabled] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_ENABLED, true));
   const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
   const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
-  const [loopEnabled, setLoopEnabled] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_ENABLED, false));
-  const [loopStart, setLoopStart] = useState(() => getFromStorage(STORAGE_KEYS.LOOP_START, 0));
-  const [loopEnd, setLoopEnd] = useState(() => {
-    const savedLoopEnd = getFromStorage(STORAGE_KEYS.LOOP_END, null);
-    return savedLoopEnd !== null ? savedLoopEnd : song.notes[song.notes.length - 1].time + song.notes[song.notes.length - 1].duration;
-  });
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -81,13 +76,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const metronomeNotes = useMemo(() => originalSong.notes, [originalSong.title]);
   const metronomeTimeSignature = useMemo(() => originalSong.timeSignature, [originalSong.title]);
 
-  // Use the new metronome hook
-  const { metronomeEnabled, toggleMetronome } = useMetronome({
-    notes: metronomeNotes, // Pass memoized notes
-    timeSignature: metronomeTimeSignature, // Pass memoized time signature
-    clickOffset: 0.1,
-  });
-
   // Calculate the total duration of the song in beats
   const songDuration = useMemo(() => {
     if (!processedSong.notes.length) return 0;
@@ -97,14 +85,42 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   
   const handleResetAnimation = useCallback(() => {
     setIsResetAnimating(true);
-    setCurrentTime(loopStart);
-    const loopStartSeconds = loopStart * (60 / Tone.Transport.bpm.value);
-    Tone.Transport.seconds = loopStartSeconds;
-    
     setTimeout(() => {
       setIsResetAnimating(false);
     }, 50);
-  }, [loopStart]);
+  }, []);
+
+  // Use the enhanced loop control hook
+  const {
+    loopEnabled,
+    loopStart,
+    loopEnd,
+    handleLoopEnabledChange,
+    handleLoopPointsChange,
+    getLoopMarkerPosition,
+    checkAndHandleLoopReset
+  } = useLoopControl({
+    songDuration,
+    isPlaying,
+    currentTime,
+    onResetAnimation: handleResetAnimation,
+    basePixelsPerBeat,
+    onLoopReset: () => {
+      // Clear existing scheduled notes
+      clearScheduledNotes();
+      // Reschedule notes from loop start
+      scheduleNotes(processedSong, loopStart, songDuration);
+      // Reschedule metronome clicks from loop start
+      scheduleMetronomeClicks(loopStart);
+    }
+  });
+
+  // Use the enhanced metronome hook
+  const { metronomeEnabled, toggleMetronome, scheduleMetronomeClicks, clearScheduledClicks } = useMetronome({
+    notes: metronomeNotes,
+    timeSignature: metronomeTimeSignature,
+    clickOffset: 0.1,
+  });
 
   const { scheduleNotes, clearScheduledNotes } = useNotePlayer({
     isMuted,
@@ -120,10 +136,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const handleStop = useCallback(() => {
     Tone.Transport.stop();
     clearScheduledNotes();
+    clearScheduledClicks();
     Tone.Transport.seconds = 0;
     setCurrentTime(0);
     setIsPlaying(false);
-  }, [clearScheduledNotes]);
+  }, [clearScheduledNotes, clearScheduledClicks]);
 
   // Initialize the synth
   useEffect(() => {
@@ -144,12 +161,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
     setBpm(savedBpm);
-    
-    // Only set loop end to songDuration if there's no saved value
-    const savedLoopEnd = getFromStorage(STORAGE_KEYS.LOOP_END, null);
-    if (savedLoopEnd === null) {
-      setLoopEnd(songDuration);
-    }
     
     // Clean up function
     return () => {
@@ -176,9 +187,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const handlePause = useCallback(() => {
     if (isPlaying) {
       Tone.Transport.pause();
+      clearScheduledNotes();
+      clearScheduledClicks();
       setIsPlaying(false);
     }
-  }, [isPlaying]);
+  }, [isPlaying, clearScheduledNotes, clearScheduledClicks]);
   
   // Handle play button
   const handlePlay = useCallback(async () => {
@@ -215,8 +228,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           setScrollOffset(containerWidth / 2);
         }
         
-        // Schedule notes from current position
+        // Schedule notes and metronome clicks from current position
         scheduleNotes(processedSong, currentTime, songDuration);
+        if (metronomeEnabled) {
+          scheduleMetronomeClicks(currentTime);
+        }
         
         // Start transport
         console.log('Starting transport at position:', Tone.Transport.seconds);
@@ -227,7 +243,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     } catch (error) {
       console.error('Error starting playback:', error);
     }
-  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling, processedSong]);
+  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling, processedSong, metronomeEnabled, scheduleMetronomeClicks]);
   
   const handlePlayPause = useCallback(async () => {
     if (isPlaying) {
@@ -329,34 +345,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
 
-  // Handle loop points change
-  const handleLoopPointsChange = useCallback((start: number, end: number) => {
-    // Update loop points
-    setLoopStart(start);
-    setLoopEnd(end);
-    saveToStorage(STORAGE_KEYS.LOOP_START, start);
-    saveToStorage(STORAGE_KEYS.LOOP_END, end);
-    
-    if (isPlaying && loopEnabled) {
-      // If we're playing and the current time is outside the new loop boundaries,
-      // move playback position to the start of the loop
-      if (currentTime < start || currentTime > end) {
-        setCurrentTime(start);
-        Tone.Transport.seconds = start * (60 / Tone.Transport.bpm.value);
-        
-        // Update scroll position
-        if (containerRef.current) {
-          const containerWidth = containerRef.current.clientWidth;
-          setScrollOffset(containerWidth / 2 - (start * basePixelsPerBeat));
-        }
-      }
-      
-      // Reschedule the notes with the new loop boundaries
-      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-      scheduleNotes(processedSong, currentTime < start ? start : currentTime, songDuration);
-    }
-  }, [isPlaying, loopEnabled, currentTime, basePixelsPerBeat, scheduleNotes, processedSong, songDuration]);
-
   // Calculate content transform based on scroll offset
   const getContentTransform = useCallback(() => {
     return `translateX(${scrollOffset}px)`;
@@ -431,17 +419,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const durationBasedWidth = songDuration * basePixelsPerBeat;
     return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
   }, [songDuration, basePixelsPerBeat]);
-
-  // Update getLoopMarkerPosition to be relative to the start of the content
-  const getLoopMarkerPosition = useCallback((time: number) => {
-    return time * basePixelsPerBeat;
-  }, [basePixelsPerBeat]);
-
-  // Handle loop enabled/disabled
-  const handleLoopEnabledChange = useCallback((enabled: boolean) => {
-    setLoopEnabled(enabled);
-    saveToStorage(STORAGE_KEYS.LOOP_ENABLED, enabled);
-  }, []);
 
   // Handle night mode change
   const handleNightModeChange = useCallback((enabled: boolean) => {
@@ -543,21 +520,19 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         
         const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
         
-        if (loopEnabled) {
-          // Check if we're at or beyond the loop end point
-          if (transportTimeInBeats >= loopEnd) {
-            // Don't update the time past loop end - the loopId in scheduleNotes will handle
-            // jumping back to loop start
-            animationFrame = requestAnimationFrame(updateTime);
-            return;
-          }
-          
-          // Check if we've jumped backwards (loop restart)
-          if (lastKnownTime > transportTimeInBeats + 1) {
-            // Force-update the UI to reflect the loop restart
-            setVisibleNotes([]); // Clear notes for a clean restart
-          }
-        } else if (transportTimeInBeats >= songDuration) {
+        // Check for loop reset first
+        if (checkAndHandleLoopReset(transportTimeInBeats)) {
+          animationFrame = requestAnimationFrame(updateTime);
+          return;
+        }
+        
+        // Check if we've jumped backwards (loop restart)
+        if (lastKnownTime > transportTimeInBeats + 1) {
+          // Force-update the UI to reflect the loop restart
+          setVisibleNotes([]); // Clear notes for a clean restart
+        }
+
+        if (!loopEnabled && transportTimeInBeats >= songDuration) {
           handleStop();
           return;
         }
@@ -588,7 +563,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, isResetAnimating, basePixelsPerBeat, currentTime, handleStop]);
+  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, isResetAnimating, basePixelsPerBeat, currentTime, handleStop, checkAndHandleLoopReset]);
 
   // Update visible notes based on current time
   useEffect(() => {

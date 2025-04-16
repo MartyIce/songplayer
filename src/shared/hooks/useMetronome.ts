@@ -9,7 +9,14 @@ interface UseMetronomeProps {
   clickOffset?: number; // Time in seconds to offset metronome clicks (default: 0)
 }
 
-export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseMetronomeProps) => {
+interface UseMetronomeReturn {
+  metronomeEnabled: boolean;
+  toggleMetronome: (enabled: boolean) => void;
+  scheduleMetronomeClicks: (startBeat: number) => void;
+  clearScheduledClicks: () => void;
+}
+
+export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseMetronomeProps): UseMetronomeReturn => {
   // Use state for UI updates
   const [metronomeEnabled, setMetronomeEnabled] = useState(() => {
     const initialValue = getFromStorage(STORAGE_KEYS.METRONOME_ENABLED, false);
@@ -26,32 +33,6 @@ export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseM
   useEffect(() => {
     metronomeEnabledRef.current = metronomeEnabled;
   }, [metronomeEnabled]);
-
-  const handleMetronomeChange = useCallback((enabled: boolean) => {
-    console.log('[useMetronome] Toggling metronomeEnabled to:', enabled); // Log toggle
-    setMetronomeEnabled(enabled);
-    metronomeEnabledRef.current = enabled;
-    saveToStorage(STORAGE_KEYS.METRONOME_ENABLED, enabled);
-  }, []);
-
-  // Effect to create and initialize the synth
-  useEffect(() => {
-    console.log('[useMetronome] Creating clickSynth');
-    
-    // Create a click synth with a short envelope and higher volume for better audibility
-    clickSynth.current = new Tone.Synth({
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
-      volume: 0, // Full volume - we'll control it in the trigger
-    }).toDestination();
-    
-    return () => {
-      if (clickSynth.current) {
-        clickSynth.current.dispose();
-        clickSynth.current = null;
-      }
-    };
-  }, []);
 
   const createMetronomePart = useCallback((startOffset = 0) => {
     console.log('[useMetronome] Creating metronome part with offset:', startOffset);
@@ -111,87 +92,60 @@ export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseM
 
     part.loop = false;
     return part;
-  }, [notes, timeSignature]);
+  }, [notes, timeSignature, clickOffset]);
 
-  const startMetronome = useCallback(() => {
-    console.log('[useMetronome] Starting metronome');
-    
-    // Always clean up existing part
+  const clearScheduledClicks = useCallback(() => {
+    console.log('[useMetronome] Clearing scheduled clicks');
     if (metronomePart.current) {
       metronomePart.current.stop();
       metronomePart.current.dispose();
       metronomePart.current = null;
     }
-
-    // Get current transport position in beats
-    const currentBeat = Tone.Transport.position.toString().split(':');
-    const beatPosition = (parseInt(currentBeat[0]) * timeSignature![0]) + parseInt(currentBeat[1]);
-    console.log('[useMetronome] Current transport position in beats:', beatPosition);
-
-    // Create new part starting from current position
-    const newPart = createMetronomePart(beatPosition);
-    if (newPart) {
-      metronomePart.current = newPart;
-      try {
-        metronomePart.current.start(0);
-        console.log('[useMetronome] Metronome started successfully');
-      } catch (error) {
-        console.error('[useMetronome] Error starting metronome:', error);
-      }
-    }
-  }, [createMetronomePart, timeSignature]);
-
-  const stopMetronome = useCallback(() => {
-    console.log('[useMetronome] Stopping metronome');
-    if (metronomePart.current) {
-      try {
-        metronomePart.current.stop();
-        metronomePart.current.dispose();
-        metronomePart.current = null;
-        console.log('[useMetronome] Metronome stopped and disposed');
-      } catch (error) {
-        console.error('[useMetronome] Error stopping metronome:', error);
-      }
-    }
   }, []);
 
-  // Effect to manage the metronome part and context state
-  useEffect(() => {
-    // Listen for transport state changes
-    const handleTransportStateChange = () => {
-      const state = Tone.Transport.state;
-      console.log('[useMetronome] Transport state changed:', state);
-      
-      if (state === 'started') {
-        startMetronome();
-      } else if (state === 'stopped' || state === 'paused') {
-        stopMetronome();
-      }
-    };
+  const scheduleMetronomeClicks = useCallback((startBeat: number) => {
+    console.log('[useMetronome] Scheduling metronome clicks from beat:', startBeat);
+    if (!metronomeEnabled) return;
 
-    // Set up initial state
-    if (Tone.Transport.state === 'started') {
-      startMetronome();
+    // Clear any existing scheduled clicks
+    clearScheduledClicks();
+
+    // Create and start new part
+    const newPart = createMetronomePart(startBeat);
+    if (newPart) {
+      metronomePart.current = newPart;
+      metronomePart.current.start(0);
     }
+  }, [metronomeEnabled, createMetronomePart, clearScheduledClicks]);
 
-    // Subscribe to transport state changes
-    Tone.Transport.on('start', handleTransportStateChange);
-    Tone.Transport.on('stop', handleTransportStateChange);
-    Tone.Transport.on('pause', handleTransportStateChange);
+  const handleMetronomeChange = useCallback((enabled: boolean) => {
+    console.log('[useMetronome] Toggling metronomeEnabled to:', enabled);
+    setMetronomeEnabled(enabled);
+    metronomeEnabledRef.current = enabled;
+    saveToStorage(STORAGE_KEYS.METRONOME_ENABLED, enabled);
 
-    return () => {
-      console.log('[useMetronome] Effect cleanup');
-      Tone.Transport.off('start', handleTransportStateChange);
-      Tone.Transport.off('stop', handleTransportStateChange);
-      Tone.Transport.off('pause', handleTransportStateChange);
-      stopMetronome();
-    };
-  }, [startMetronome, stopMetronome]);
+    if (enabled) {
+      // Schedule clicks from current transport position
+      const currentBeat = Tone.Transport.position.toString().split(':');
+      const beatPosition = (parseInt(currentBeat[0]) * (timeSignature?.[0] || 4)) + parseInt(currentBeat[1]);
+      scheduleMetronomeClicks(beatPosition);
+    } else {
+      clearScheduledClicks();
+    }
+  }, [timeSignature, scheduleMetronomeClicks, clearScheduledClicks]);
 
-  // Cleanup synth on unmount
+  // Effect to create and initialize the synth
   useEffect(() => {
+    console.log('[useMetronome] Creating clickSynth');
+    
+    // Create a click synth with a short envelope and higher volume for better audibility
+    clickSynth.current = new Tone.Synth({
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 },
+      volume: 0, // Full volume - we'll control it in the trigger
+    }).toDestination();
+    
     return () => {
-      console.log('[useMetronome] Component unmounting, disposing clickSynth');
       if (clickSynth.current) {
         clickSynth.current.dispose();
         clickSynth.current = null;
@@ -202,5 +156,7 @@ export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseM
   return {
     metronomeEnabled,
     toggleMetronome: handleMetronomeChange,
+    scheduleMetronomeClicks,
+    clearScheduledClicks
   };
 }; 
