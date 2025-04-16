@@ -12,6 +12,7 @@ import { STORAGE_KEYS, saveToStorage, getFromStorage } from '../utils/localStora
 import { useZoom } from '../contexts/ZoomContext';
 import ZoomControls from './ZoomControls';
 import { useNotePlayer } from '../hooks/useNotePlayer';
+import { useMetronome } from '../shared/hooks/useMetronome';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -42,7 +43,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
     // If no tuning, it's already in string/fret format
     return [song, song];
-  }, [song]);
+  }, [song.title]);
 
   const { zoomLevel } = useZoom();
   const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
@@ -53,7 +54,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [bpm, setBpm] = useState<number>(() => getFromStorage(STORAGE_KEYS.TEMPO, song.bpm));
   const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const [guitarType, setGuitarType] = useState<GuitarType>(() => getFromStorage(STORAGE_KEYS.GUITAR_TYPE, 'acoustic'));
-  const [metronomeEnabled, setMetronomeEnabled] = useState(() => getFromStorage(STORAGE_KEYS.METRONOME_ENABLED, false));
   const [chordsEnabled, setChordsEnabled] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_ENABLED, true));
   const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
   const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
@@ -76,8 +76,17 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const tablatureContentRef = useRef<HTMLDivElement>(null);
   const scheduledNotes = useRef<number[]>([]);
-  const metronomePart = useRef<Tone.Part | null>(null);
   
+  // Memoize props for useMetronome to ensure stable references
+  const metronomeNotes = useMemo(() => originalSong.notes, [originalSong.title]);
+  const metronomeTimeSignature = useMemo(() => originalSong.timeSignature, [originalSong.title]);
+
+  // Use the new metronome hook
+  const { metronomeEnabled, toggleMetronome } = useMetronome({
+    notes: metronomeNotes, // Pass memoized notes
+    timeSignature: metronomeTimeSignature, // Pass memoized time signature
+  });
+
   // Calculate the total duration of the song in beats
   const songDuration = useMemo(() => {
     if (!processedSong.notes.length) return 0;
@@ -162,12 +171,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, currentTime, scheduleNotes, clearScheduledNotes, processedSong, songDuration]);
 
-  // Handle metronome change
-  const handleMetronomeChange = useCallback((enabled: boolean) => {
-    setMetronomeEnabled(enabled);
-    saveToStorage(STORAGE_KEYS.METRONOME_ENABLED, enabled);
-  }, []);
-  
   // Handle pause button
   const handlePause = useCallback(() => {
     if (isPlaying) {
@@ -184,32 +187,44 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       return;
     }
 
-    await Tone.start();
-    if (!isPlaying) {
-      // Reset if at end
-      if (currentTime >= songDuration) {
-        setCurrentTime(0);
-        Tone.Transport.seconds = 0;
+    try {
+      // Start Tone.js context
+      await Tone.start();
+      console.log('Tone.js context started');
+
+      if (!isPlaying) {
+        // Reset transport state
+        Tone.Transport.cancel();
+        
+        // Reset if at end
+        if (currentTime >= songDuration) {
+          setCurrentTime(0);
+          Tone.Transport.seconds = 0;
+        }
+        
+        // If loop is enabled, start from loop start position
+        if (loopEnabled) {
+          setCurrentTime(loopStart);
+          Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
+        }
+        
+        // Initialize scroll position only if not in manual mode
+        if (!isManualScrolling && containerRef.current) {
+          const containerWidth = containerRef.current.clientWidth;
+          setScrollOffset(containerWidth / 2);
+        }
+        
+        // Schedule notes from current position
+        scheduleNotes(processedSong, currentTime, songDuration);
+        
+        // Start transport
+        console.log('Starting transport at position:', Tone.Transport.seconds);
+        Tone.Transport.start();
+        setIsPlaying(true);
+        console.log('Transport started, playback began');
       }
-      
-      // If loop is enabled, start from loop start position
-      if (loopEnabled) {
-        setCurrentTime(loopStart);
-        Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
-      }
-      
-      // Initialize scroll position only if not in manual mode
-      if (!isManualScrolling && containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth;
-        setScrollOffset(containerWidth / 2);
-      }
-      
-      // Schedule notes from current position
-      scheduleNotes(processedSong, currentTime, songDuration);
-      
-      // Start transport
-      Tone.Transport.start();
-      setIsPlaying(true);
+    } catch (error) {
+      console.error('Error starting playback:', error);
     }
   }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling, processedSong]);
   
@@ -312,63 +327,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       Tone.Transport.start();
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
-
-  // Create a click synth for the metronome
-  useEffect(() => {
-    // Create a click synth with a short envelope
-    const clickSynth = new Tone.Synth({
-      oscillator: {
-        type: 'sine',
-      },
-      envelope: {
-        attack: 0.001,
-        decay: 0.05,
-        sustain: 0,
-        release: 0.05,
-      },
-    }).toDestination();
-    clickSynth.volume.value = -10; // Reduce volume
-
-    // Create metronome part
-    if (metronomePart.current) {
-      metronomePart.current.dispose();
-    }
-
-    // Set up time signature
-    const [beatsPerBar] = song.timeSignature || [3, 4];
-    Tone.Transport.timeSignature = beatsPerBar;
-
-    // Calculate total beats in the song
-    const totalBeats = Math.ceil(song.notes[song.notes.length - 1].time + 
-                               song.notes[song.notes.length - 1].duration);
-    
-    // Create metronome clicks for each beat
-    const metronomeEvents = Array.from({ length: totalBeats }, (_, i) => ({
-      time: `${Math.floor(i / beatsPerBar)}:${i % beatsPerBar}:0`,
-      beat: i % beatsPerBar
-    }));
-
-    metronomePart.current = new Tone.Part((time, event) => {
-      if (metronomeEnabled) {
-        // Accent first beat of each bar (beat 0)
-        const isAccent = event.beat === 0;
-        clickSynth.triggerAttackRelease(
-          isAccent ? 1200 : 800, // Higher pitch for accented beats
-          0.02, // Shorter duration for a crisper click
-          time,
-          isAccent ? 0.7 : 0.5 // Higher velocity for accented beats
-        );
-      }
-    }, metronomeEvents);
-
-    metronomePart.current.loop = false;
-    metronomePart.current.start(0);
-
-    return () => {
-      clickSynth.dispose();
-      metronomePart.current?.dispose();
-    };
-  }, [metronomeEnabled, song.notes, song.timeSignature]);
 
   // Handle loop points change
   const handleLoopPointsChange = useCallback((start: number, end: number) => {
@@ -668,7 +626,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         bpm={bpm}
         onBpmChange={handleBpmChange}
         metronomeEnabled={metronomeEnabled}
-        onMetronomeChange={handleMetronomeChange}
+        onMetronomeChange={toggleMetronome}
         chordsEnabled={chordsEnabled}
         onChordsChange={handleChordsEnabledChange}
         chordsVolume={chordsVolume}

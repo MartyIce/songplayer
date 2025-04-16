@@ -100,7 +100,8 @@ function App() {
     return <div className="error-message">Error: {error}</div>;
   }
 
-  // Mobile landscape layout
+  // Mobile landscape layout - Temporarily commented out for debugging
+  /*
   if (isMobile && isLandscape) {
     return (
       <ZoomProvider>
@@ -128,8 +129,9 @@ function App() {
       </ZoomProvider>
     );
   }
+  */
 
-  // Default desktop layout
+  // Default desktop layout (now always rendered)
   return (
     <ZoomProvider>
       <div className="App">
