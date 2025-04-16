@@ -85,6 +85,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const { metronomeEnabled, toggleMetronome } = useMetronome({
     notes: metronomeNotes, // Pass memoized notes
     timeSignature: metronomeTimeSignature, // Pass memoized time signature
+    clickOffset: 0.1,
   });
 
   // Calculate the total duration of the song in beats

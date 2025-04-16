@@ -6,9 +6,10 @@ import { STORAGE_KEYS, getFromStorage, saveToStorage } from '../../utils/localSt
 interface UseMetronomeProps {
   notes: Note[];
   timeSignature?: [number, number];
+  clickOffset?: number; // Time in seconds to offset metronome clicks (default: 0)
 }
 
-export const useMetronome = ({ notes, timeSignature }: UseMetronomeProps) => {
+export const useMetronome = ({ notes, timeSignature, clickOffset = 0.005 }: UseMetronomeProps) => {
   // Use state for UI updates
   const [metronomeEnabled, setMetronomeEnabled] = useState(() => {
     const initialValue = getFromStorage(STORAGE_KEYS.METRONOME_ENABLED, false);
@@ -94,10 +95,13 @@ export const useMetronome = ({ notes, timeSignature }: UseMetronomeProps) => {
       console.log('[useMetronome] Triggering click', { time, beat: event.beat, isAccent });
       
       try {
+        // Add the small offset to the scheduled time
+        const adjustedTime = time + clickOffset;
+        
         clickSynth.current.triggerAttackRelease(
           isAccent ? 1200 : 800, // Higher pitch for accented beats
           0.02, // Short duration
-          time, // Keep scheduled time for proper timing
+          adjustedTime, // Use adjusted time for better synchronization
           isAccent ? 0.5 : 0.3 // Control volume through velocity
         );
       } catch (error) {
