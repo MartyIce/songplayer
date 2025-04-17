@@ -14,6 +14,7 @@ import ZoomControls from './ZoomControls';
 import { useNotePlayer } from '../hooks/useNotePlayer';
 import { useMetronome } from '../shared/hooks/useMetronome';
 import { useLoopControl } from '../shared/hooks/useLoopControl';
+import { useScrollControl } from '../hooks/useScrollControl';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -58,10 +59,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [chordsEnabled, setChordsEnabled] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_ENABLED, true));
   const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
   const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const [isManualScrolling, setIsManualScrolling] = useState(false);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
   const [nightMode, setNightMode] = useState(() => getFromStorage(STORAGE_KEYS.NIGHT_MODE, false));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -193,6 +190,29 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, clearScheduledNotes, clearScheduledClicks]);
   
+  const {
+    scrollOffset,
+    isDragging,
+    isManualScrolling,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleResumeAutoScroll
+  } = useScrollControl({
+    containerRef,
+    isPlaying,
+    currentTime,
+    basePixelsPerBeat
+  });
+
+  // Calculate content transform based on scroll offset
+  const getContentTransform = useCallback(() => {
+    return `translateX(${scrollOffset}px)`;
+  }, [scrollOffset]);
+
   // Handle play button
   const handlePlay = useCallback(async () => {
     // Ensure container is ready before playing
@@ -222,12 +242,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
         }
         
-        // Initialize scroll position only if not in manual mode
-        if (!isManualScrolling && containerRef.current) {
-          const containerWidth = containerRef.current.clientWidth;
-          setScrollOffset(containerWidth / 2);
-        }
-        
         // Schedule notes and metronome clicks from current position
         scheduleNotes(processedSong, currentTime, songDuration);
         if (metronomeEnabled) {
@@ -243,7 +257,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     } catch (error) {
       console.error('Error starting playback:', error);
     }
-  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, isManualScrolling, processedSong, metronomeEnabled, scheduleMetronomeClicks]);
+  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, processedSong, metronomeEnabled, scheduleMetronomeClicks]);
   
   const handlePlayPause = useCallback(async () => {
     if (isPlaying) {
@@ -345,74 +359,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
 
-  // Calculate content transform based on scroll offset
-  const getContentTransform = useCallback(() => {
-    return `translateX(${scrollOffset}px)`;
-  }, [scrollOffset]);
-
-  // Handle manual scrolling - though not used directly in this file, it's available for future use
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleScroll = useCallback((deltaX: number) => {
-    setScrollOffset(prev => prev - deltaX);
-  }, []);
-
-  // Handle mouse events
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setStartX(e.clientX - scrollOffset);
-    setIsManualScrolling(true);
-    if (tablatureContentRef.current) {
-      tablatureContentRef.current.classList.add('no-transition');
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    
-    const newOffset = e.clientX - startX;
-    setScrollOffset(newOffset);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    if (tablatureContentRef.current) {
-      tablatureContentRef.current.classList.remove('no-transition');
-    }
-  };
-
-  // Handle touch events for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setStartX(e.touches[0].clientX - scrollOffset);
-    setIsManualScrolling(true);
-    if (tablatureContentRef.current) {
-      tablatureContentRef.current.classList.add('no-transition');
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    
-    const newOffset = e.touches[0].clientX - startX;
-    setScrollOffset(newOffset);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    if (tablatureContentRef.current) {
-      tablatureContentRef.current.classList.remove('no-transition');
-    }
-  };
-
-  // Handle resuming auto-scroll
-  const handleResumeAutoScroll = useCallback(() => {
-    setIsManualScrolling(false);
-    if (containerRef.current && isPlaying) {
-      const containerWidth = containerRef.current.clientWidth;
-      setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
-    }
-  }, [isPlaying, currentTime, basePixelsPerBeat]);
-
   // Calculate the required width for the entire song
   const contentWidth = useMemo(() => {
     const minWidth = 1000; // Minimum width in pixels
@@ -447,123 +393,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       scheduleNotes(processedSong, currentTime, songDuration);
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
-
-  // Initialize position
-  useEffect(() => {
-    const initializePosition = () => {
-      if (containerRef.current) {
-        const triggerLinePosition = containerRef.current.clientWidth / 2;
-        setScrollOffset(triggerLinePosition);
-      }
-    };
-
-    // Initial setup
-    initializePosition();
-
-    // Add a small delay to ensure the container is properly rendered
-    const timeoutId = setTimeout(initializePosition, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current && !isManualScrolling && !isPlaying) {
-        const containerWidth = containerRef.current.clientWidth;
-        setScrollOffset(containerWidth / 2);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isManualScrolling, isPlaying]);
-
-  // Auto-scroll during playback
-  useEffect(() => {
-    if (isPlaying && currentTime > 0 && containerRef.current && !isManualScrolling) {
-      const containerWidth = containerRef.current.clientWidth;
-      const newOffset = containerWidth / 2 - (currentTime * basePixelsPerBeat);
-      
-      // Use requestAnimationFrame for smoother scrolling
-      requestAnimationFrame(() => {
-        setScrollOffset(newOffset);
-      });
-    }
-  }, [isPlaying, currentTime, basePixelsPerBeat, isManualScrolling]);
-
-  // Update scroll position when zoom changes
-  useEffect(() => {
-    if (containerRef.current && !isManualScrolling) {
-      const containerWidth = containerRef.current.clientWidth;
-      const newOffset = containerWidth / 2 - (currentTime * basePixelsPerBeat);
-      
-      // Use requestAnimationFrame for smoother zoom transitions
-      requestAnimationFrame(() => {
-        setScrollOffset(newOffset);
-      });
-    }
-  }, [basePixelsPerBeat, currentTime, isManualScrolling]);
-
-  // Update current time based on Transport position
-  useEffect(() => {
-    let animationFrame: number;
-    let lastKnownTime = 0;
-
-    const updateTime = (timestamp: number) => {
-      if (isPlaying) {
-        // Skip updates during the reset animation to prevent visual glitches
-        if (isResetAnimating) {
-          animationFrame = requestAnimationFrame(updateTime);
-          return;
-        }
-        
-        const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
-        
-        // Check for loop reset first
-        if (checkAndHandleLoopReset(transportTimeInBeats)) {
-          animationFrame = requestAnimationFrame(updateTime);
-          return;
-        }
-        
-        // Check if we've jumped backwards (loop restart)
-        if (lastKnownTime > transportTimeInBeats + 1) {
-          // Force-update the UI to reflect the loop restart
-          setVisibleNotes([]); // Clear notes for a clean restart
-        }
-
-        if (!loopEnabled && transportTimeInBeats >= songDuration) {
-          handleStop();
-          return;
-        }
-
-        // Store the current time for the next frame
-        lastKnownTime = transportTimeInBeats;
-        
-        setCurrentTime(transportTimeInBeats);
-        
-        // Only update scroll position if not in manual mode
-        if (!isManualScrolling && containerRef.current) {
-          const containerWidth = containerRef.current.clientWidth;
-          // Calculate offset to keep the current position at the trigger line
-          const newOffset = containerWidth / 2 - (transportTimeInBeats * basePixelsPerBeat);
-          setScrollOffset(newOffset);
-        }
-      }
-      animationFrame = requestAnimationFrame(updateTime);
-    };
-
-    if (isPlaying) {
-      lastKnownTime = currentTime;
-      animationFrame = requestAnimationFrame(updateTime);
-    }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [isPlaying, songDuration, isManualScrolling, loopEnabled, loopEnd, isResetAnimating, basePixelsPerBeat, currentTime, handleStop, checkAndHandleLoopReset]);
 
   // Update visible notes based on current time
   useEffect(() => {
