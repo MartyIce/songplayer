@@ -61,6 +61,10 @@ function App() {
     // Get the saved song ID from local storage, or use the first song as default
     const savedSongId = getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id);
     const songToLoad = songList.find(song => song.id === savedSongId) || songList[0];
+    
+    // Make sure the current song ID is saved correctly
+    saveToStorage(STORAGE_KEYS.CURRENT_SONG, songToLoad.id);
+    
     loadSong(songToLoad.filename);
   }, []);
 
@@ -143,7 +147,7 @@ function App() {
             <TablaturePlayer 
               song={currentSong} 
               songList={songList}
-              currentSongId={songList.find(song => song.name === currentSong.title)?.id || songList[0].id}
+              currentSongId={getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id)}
               onSongChange={handleSongChange}
               isLoading={isLoading}
             />
