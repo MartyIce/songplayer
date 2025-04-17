@@ -691,11 +691,20 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
 
   // Auto-scrolling for following the music
   useEffect(() => {
-    // No need to store animation frame ref since we're not using it yet
-    // This effect is for future auto-scrolling implementation
-    
-    // Clean up not needed since we're not using animation frames yet
-  }, [loopEnabled, loopStart, loopEnd, activeNotePos, manualScrollMode, currentTime]);
+    // Only scroll if not in manual mode
+    if (!manualScrollMode && !isDragging && scrollContainerRef.current && currentTime > 0) {
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      const targetScrollLeft = calculateTargetScrollLeft(containerWidth);
+      
+      // Use requestAnimationFrame for smoother scrolling
+      requestAnimationFrame(() => {
+        scrollContainerRef.current?.scrollTo({
+          left: targetScrollLeft,
+          behavior: 'auto'
+        });
+      });
+    }
+  }, [loopEnabled, loopStart, loopEnd, manualScrollMode, isDragging, currentTime, calculateTargetScrollLeft]);
 
   return (
     <div className="vex-staff-display" data-night-mode={nightMode}>
