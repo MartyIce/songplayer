@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as Tone from 'tone';
-import { SongData, StringFretNote, Note } from '../types/SongTypes';
+import { SongData, StringFretNote } from '../types/SongTypes';
 import './TablaturePlayer.css';
 import GuitarString from './GuitarString';
 import NoteElement from './NoteElement';
@@ -17,6 +17,7 @@ import { useScrollControl } from '../hooks/useScrollControl';
 import { usePlayerSettings } from '../hooks/usePlayerSettings';
 import { TablatureGrid } from './TablatureGrid';
 import { useSongProcessor } from '../hooks/useSongProcessor';
+import { useTransportControl } from '../hooks/useTransportControl';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -41,7 +42,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Process song data using the hook
   const {
@@ -76,7 +76,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   } = usePlayerSettings(song);
   
   // Refs
-  const synth = useRef<Tone.PolySynth | null>(null);
   const notesContainerRef = useRef<HTMLDivElement>(null);
   const tablatureContentRef = useRef<HTMLDivElement>(null);
   const scheduledNotes = useRef<number[]>([]);
@@ -99,8 +98,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     loopEnd,
     handleLoopEnabledChange,
     handleLoopPointsChange,
-    getLoopMarkerPosition,
-    checkAndHandleLoopReset
+    getLoopMarkerPosition
   } = useLoopControl({
     songDuration,
     isPlaying,
@@ -134,27 +132,29 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     onResetAnimation: handleResetAnimation,
   });
 
-  // Update handleStop to use clearScheduledNotes
-  const handleStop = useCallback(() => {
-    Tone.Transport.stop();
-    clearScheduledNotes();
-    clearScheduledClicks();
-    Tone.Transport.seconds = 0;
-    setCurrentTime(0);
-    setIsPlaying(false);
-  }, [clearScheduledNotes, clearScheduledClicks]);
+  // Use transport control hook
+  const {
+    handlePlay,
+    handlePause,
+    handleStop,
+    handlePlayPause,
+    containerRef
+  } = useTransportControl({
+    isPlaying,
+    setIsPlaying,
+    currentTime,
+    setCurrentTime,
+    songDuration,
+    loopEnabled,
+    loopStart,
+    metronomeEnabled,
+    scheduleNotes,
+    scheduleMetronomeClicks,
+    clearScheduledNotes,
+    clearScheduledClicks,
+    processedSong
+  });
 
-  // Initialize the synth
-  useEffect(() => {
-    synth.current = new Tone.PolySynth(Tone.Synth).toDestination();
-    
-    return () => {
-      if (synth.current) {
-        synth.current.dispose();
-      }
-    };
-  }, []);
-  
   // Initialize Tone.Transport
   useEffect(() => {
     // Set initial tempo and time signature
@@ -163,15 +163,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
     handleBpmChange(savedBpm);
-    
-    // Clean up function
-    return () => {
-      Tone.Transport.stop();
-      Tone.Transport.cancel();
-      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-      scheduledNotes.current = [];
-    };
-  }, [song, songDuration, handleBpmChange]);
+  }, [song, handleBpmChange]);
   
   // Update handleMuteChange to use clearScheduledNotes
   const handleMuteChangeWithScheduling = useCallback((muted: boolean) => {
@@ -184,16 +176,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, currentTime, scheduleNotes, clearScheduledNotes, processedSong, songDuration, handleMuteChange]);
 
-  // Handle pause button
-  const handlePause = useCallback(() => {
-    if (isPlaying) {
-      Tone.Transport.pause();
-      clearScheduledNotes();
-      clearScheduledClicks();
-      setIsPlaying(false);
-    }
-  }, [isPlaying, clearScheduledNotes, clearScheduledClicks]);
-  
   const {
     scrollOffset,
     isDragging,
@@ -216,6 +198,13 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const getContentTransform = useCallback(() => {
     return `translateX(${scrollOffset}px)`;
   }, [scrollOffset]);
+
+  // Calculate the required width for the entire song
+  const contentWidth = useMemo(() => {
+    const minWidth = 1000; // Minimum width in pixels
+    const durationBasedWidth = songDuration * basePixelsPerBeat;
+    return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
+  }, [songDuration, basePixelsPerBeat]);
 
   // Update current time based on Transport position
   useEffect(() => {
@@ -271,83 +260,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     };
   }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop, clearNotes]);
 
-  // Calculate the required width for the entire song
-  const contentWidth = useMemo(() => {
-    const minWidth = 1000; // Minimum width in pixels
-    const durationBasedWidth = songDuration * basePixelsPerBeat;
-    return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
-  }, [songDuration, basePixelsPerBeat]);
-
-  // Handle chords volume change with scheduling
-  const handleChordsVolumeChangeWithScheduling = useCallback((volume: number) => {
-    handleChordsVolumeChange(volume);
-
-    // If we're currently playing, reschedule notes to apply the new volume
-    if (isPlaying) {
-      // Clear existing scheduled notes
-      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-      scheduledNotes.current = [];
-      
-      // Reschedule from current position with new volume
-      scheduleNotes(processedSong, currentTime, songDuration);
-    }
-  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
-
-  // Handle play button
-  const handlePlay = useCallback(async () => {
-    // Ensure container is ready before playing
-    if (!containerRef.current) {
-      console.warn('Container not ready yet');
-      return;
-    }
-
-    try {
-      // Start Tone.js context
-      await Tone.start();
-      console.log('Tone.js context started');
-
-      if (!isPlaying) {
-        // Reset transport state
-        Tone.Transport.cancel();
-        
-        // Reset if at end
-        if (currentTime >= songDuration) {
-          setCurrentTime(0);
-          Tone.Transport.seconds = 0;
-        }
-        
-        // If loop is enabled, start from loop start position
-        if (loopEnabled) {
-          setCurrentTime(loopStart);
-          Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
-        }
-        
-        // Schedule notes and metronome clicks from current position
-        scheduleNotes(processedSong, currentTime, songDuration);
-        if (metronomeEnabled) {
-          scheduleMetronomeClicks(currentTime);
-        }
-        
-        // Start transport
-        console.log('Starting transport at position:', Tone.Transport.seconds);
-        Tone.Transport.start();
-        setIsPlaying(true);
-        console.log('Transport started, playback began');
-      }
-    } catch (error) {
-      console.error('Error starting playback:', error);
-    }
-  }, [isPlaying, currentTime, songDuration, loopEnabled, loopStart, scheduleNotes, processedSong, metronomeEnabled, scheduleMetronomeClicks]);
-  
-  const handlePlayPause = useCallback(async () => {
-    if (isPlaying) {
-      handlePause();
-    } else {
-      handlePlay();
-    }
-  }, [isPlaying, handlePause, handlePlay]);
-  
-  // Handle guitar type change
+  // Handle guitar type change with scheduling
   const handleGuitarTypeChangeWithScheduling = useCallback(async (type: GuitarType) => {
     const wasPlaying = isPlaying;
     if (wasPlaying) {
@@ -361,7 +274,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       handlePlay();
     }
   }, [isPlaying, handlePause, handlePlay, handleGuitarTypeChange]);
-
+  
   // Handle BPM change with scheduling
   const handleBpmChangeWithScheduling = useCallback((newBpm: number) => {
     handleBpmChange(newBpm);
@@ -389,6 +302,21 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       Tone.Transport.start();
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
+
+  // Handle chords volume change with scheduling
+  const handleChordsVolumeChangeWithScheduling = useCallback((volume: number) => {
+    handleChordsVolumeChange(volume);
+
+    // If we're currently playing, reschedule notes to apply the new volume
+    if (isPlaying) {
+      // Clear existing scheduled notes
+      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+      scheduledNotes.current = [];
+      
+      // Reschedule from current position with new volume
+      scheduleNotes(processedSong, currentTime, songDuration);
+    }
+  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
 
   return (
     <div className="tablature-player" ref={containerRef}>
