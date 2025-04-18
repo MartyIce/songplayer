@@ -16,6 +16,7 @@ import { useMetronome } from '../shared/hooks/useMetronome';
 import { useLoopControl } from '../shared/hooks/useLoopControl';
 import { useScrollControl } from '../hooks/useScrollControl';
 import { usePlayerSettings } from '../hooks/usePlayerSettings';
+import { TablatureGrid } from './TablatureGrid';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -277,6 +278,52 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     };
   }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop]);
 
+  // Calculate the required width for the entire song
+  const contentWidth = useMemo(() => {
+    const minWidth = 1000; // Minimum width in pixels
+    const durationBasedWidth = songDuration * basePixelsPerBeat;
+    return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
+  }, [songDuration, basePixelsPerBeat]);
+
+  // Handle chords volume change with scheduling
+  const handleChordsVolumeChangeWithScheduling = useCallback((volume: number) => {
+    handleChordsVolumeChange(volume);
+
+    // If we're currently playing, reschedule notes to apply the new volume
+    if (isPlaying) {
+      // Clear existing scheduled notes
+      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
+      scheduledNotes.current = [];
+      
+      // Reschedule from current position with new volume
+      scheduleNotes(processedSong, currentTime, songDuration);
+    }
+  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
+
+  // Update visible notes based on current time
+  useEffect(() => {
+    // If we're in the middle of a loop reset animation, don't update the notes
+    // This prevents flickering during the loop transition
+    if (isResetAnimating) {
+      return;
+    }
+    
+    // Show all notes, but still handle loop boundaries
+    const visible = processedSong.notes.filter(
+      (note: Note) => {
+        // Filter out rest notes - they should not be displayed in the tablature
+        if ('rest' in note) {
+          return false;
+        }
+        
+        // Show all notes, regardless of loop state
+        return true;
+      }
+    ) as StringFretNote[];
+    
+    setVisibleNotes(visible);
+  }, [currentTime, processedSong.notes, isResetAnimating]);
+
   // Handle play button
   const handlePlay = useCallback(async () => {
     // Ensure container is ready before playing
@@ -346,53 +393,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, handlePause, handlePlay, handleGuitarTypeChange]);
 
-  // Generate grid lines for better visual reference
-  const renderGridLines = () => {
-    const gridLines = [];
-    
-    // Horizontal lines (for strings)
-    // With the new flexbox layout, we need to calculate positions differently
-    const containerHeight = 280;
-    const paddingTop = 40;
-    const contentHeight = containerHeight - (paddingTop * 2);
-    const stringSpacing = contentHeight / 5; // 5 spaces for 6 strings
-    
-    for (let i = 0; i < 6; i++) {
-      const yPosition = paddingTop + (i * stringSpacing);
-      gridLines.push(
-        <div 
-          key={`h-${i}`} 
-          className="grid-line horizontal" 
-          style={{ 
-            top: `${yPosition}px`,
-            opacity: 0.15 // Make grid lines more subtle
-          }}
-        />
-      );
-    }
-    
-    // Vertical lines (time markers)
-    const linesPerBeat = 1; // One line per beat
-    const totalBeats = Math.ceil(songDuration);
-    const totalLines = totalBeats * linesPerBeat;
-    
-    for (let i = 0; i <= totalLines; i++) {
-      const xPosition = i * basePixelsPerBeat + 20; // Add left padding
-      gridLines.push(
-        <div 
-          key={`v-${i}`} 
-          className="grid-line vertical" 
-          style={{ 
-            left: `${xPosition}px`,
-            opacity: 0.15 // Make grid lines more subtle
-          }}
-        />
-      );
-    }
-    
-    return gridLines;
-  };
-  
   // Handle BPM change with scheduling
   const handleBpmChangeWithScheduling = useCallback((newBpm: number) => {
     handleBpmChange(newBpm);
@@ -420,52 +420,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       Tone.Transport.start();
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
-
-  // Calculate the required width for the entire song
-  const contentWidth = useMemo(() => {
-    const minWidth = 1000; // Minimum width in pixels
-    const durationBasedWidth = songDuration * basePixelsPerBeat;
-    return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
-  }, [songDuration, basePixelsPerBeat]);
-
-  // Handle chords volume change with scheduling
-  const handleChordsVolumeChangeWithScheduling = useCallback((volume: number) => {
-    handleChordsVolumeChange(volume);
-
-    // If we're currently playing, reschedule notes to apply the new volume
-    if (isPlaying) {
-      // Clear existing scheduled notes
-      scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
-      scheduledNotes.current = [];
-      
-      // Reschedule from current position with new volume
-      scheduleNotes(processedSong, currentTime, songDuration);
-    }
-  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
-
-  // Update visible notes based on current time
-  useEffect(() => {
-    // If we're in the middle of a loop reset animation, don't update the notes
-    // This prevents flickering during the loop transition
-    if (isResetAnimating) {
-      return;
-    }
-    
-    // Show all notes, but still handle loop boundaries
-    const visible = processedSong.notes.filter(
-      (note: Note) => {
-        // Filter out rest notes - they should not be displayed in the tablature
-        if ('rest' in note) {
-          return false;
-        }
-        
-        // Show all notes, regardless of loop state
-        return true;
-      }
-    ) as StringFretNote[];
-    
-    setVisibleNotes(visible);
-  }, [currentTime, processedSong.notes, isResetAnimating]);
 
   return (
     <div className="tablature-player" ref={containerRef}>
@@ -538,9 +492,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
             width: `${contentWidth}px`
           }}
         >
-          <div className="grid-lines">
-            {renderGridLines()}
-          </div>
+          <TablatureGrid 
+            songDuration={songDuration}
+            basePixelsPerBeat={basePixelsPerBeat}
+          />
           
           {loopEnabled && (
             <>
