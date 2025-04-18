@@ -15,6 +15,7 @@ import { useNotePlayer } from '../hooks/useNotePlayer';
 import { useMetronome } from '../shared/hooks/useMetronome';
 import { useLoopControl } from '../shared/hooks/useLoopControl';
 import { useScrollControl } from '../hooks/useScrollControl';
+import { usePlayerSettings } from '../hooks/usePlayerSettings';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -53,15 +54,25 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // State declarations
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [bpm, setBpm] = useState<number>(() => getFromStorage(STORAGE_KEYS.TEMPO, song.bpm));
-  const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
-  const [guitarType, setGuitarType] = useState<GuitarType>(() => getFromStorage(STORAGE_KEYS.GUITAR_TYPE, 'acoustic'));
-  const [chordsEnabled, setChordsEnabled] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_ENABLED, true));
-  const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
-  const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
   const [isResetAnimating, setIsResetAnimating] = useState(false);
-  const [nightMode, setNightMode] = useState(() => getFromStorage(STORAGE_KEYS.NIGHT_MODE, false));
+  const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Get player settings from the hook
+  const {
+    bpm,
+    guitarType,
+    chordsEnabled,
+    chordsVolume,
+    isMuted,
+    nightMode,
+    handleBpmChange,
+    handleGuitarTypeChange,
+    handleChordsEnabledChange,
+    handleChordsVolumeChange,
+    handleMuteChange,
+    handleNightModeChange
+  } = usePlayerSettings(song);
   
   // Refs
   const synth = useRef<Tone.PolySynth | null>(null);
@@ -157,7 +168,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     Tone.Transport.bpm.value = savedBpm;
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
-    setBpm(savedBpm);
+    handleBpmChange(savedBpm);
     
     // Clean up function
     return () => {
@@ -169,16 +180,15 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   }, [song, songDuration]);
   
   // Update handleMuteChange to use clearScheduledNotes
-  const handleMuteChange = useCallback((muted: boolean) => {
-    setIsMuted(muted);
-    saveToStorage(STORAGE_KEYS.MUTE, muted);
+  const handleMuteChangeWithScheduling = useCallback((muted: boolean) => {
+    handleMuteChange(muted);
     
     clearScheduledNotes();
     
     if (!muted && isPlaying) {
       scheduleNotes(processedSong, currentTime, songDuration);
     }
-  }, [isPlaying, currentTime, scheduleNotes, clearScheduledNotes, processedSong, songDuration]);
+  }, [isPlaying, currentTime, scheduleNotes, clearScheduledNotes, processedSong, songDuration, handleMuteChange]);
 
   // Handle pause button
   const handlePause = useCallback(() => {
@@ -322,20 +332,19 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   }, [isPlaying, handlePause, handlePlay]);
   
   // Handle guitar type change
-  const handleGuitarTypeChange = useCallback(async (type: GuitarType) => {
+  const handleGuitarTypeChangeWithScheduling = useCallback(async (type: GuitarType) => {
     const wasPlaying = isPlaying;
     if (wasPlaying) {
       handlePause();
     }
     
-    setGuitarType(type);
-    saveToStorage(STORAGE_KEYS.GUITAR_TYPE, type);
+    handleGuitarTypeChange(type);
     await guitarSampler.switchGuitar(type);
     
     if (wasPlaying) {
       handlePlay();
     }
-  }, [isPlaying, handlePause, handlePlay]);
+  }, [isPlaying, handlePause, handlePlay, handleGuitarTypeChange]);
 
   // Generate grid lines for better visual reference
   const renderGridLines = () => {
@@ -384,10 +393,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     return gridLines;
   };
   
-  // Handle BPM change
-  const handleBpmChange = useCallback((newBpm: number) => {
-    setBpm(newBpm);
-    saveToStorage(STORAGE_KEYS.TEMPO, newBpm);
+  // Handle BPM change with scheduling
+  const handleBpmChangeWithScheduling = useCallback((newBpm: number) => {
+    handleBpmChange(newBpm);
     
     // Store current position and state
     const wasPlaying = isPlaying;
@@ -411,7 +419,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       scheduleNotes(processedSong, currentBeat, songDuration);
       Tone.Transport.start();
     }
-  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
+  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
 
   // Calculate the required width for the entire song
   const contentWidth = useMemo(() => {
@@ -420,22 +428,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
   }, [songDuration, basePixelsPerBeat]);
 
-  // Handle night mode change
-  const handleNightModeChange = useCallback((enabled: boolean) => {
-    setNightMode(enabled);
-    saveToStorage(STORAGE_KEYS.NIGHT_MODE, enabled);
-  }, []);
-
-  // Handle chords enabled/disabled
-  const handleChordsEnabledChange = useCallback((enabled: boolean) => {
-    setChordsEnabled(enabled);
-    saveToStorage(STORAGE_KEYS.CHORDS_ENABLED, enabled);
-  }, []);
-
-  // Handle chords volume change
-  const handleChordsVolumeChange = useCallback((volume: number) => {
-    setChordsVolume(volume);
-    saveToStorage(STORAGE_KEYS.CHORDS_VOLUME, volume);
+  // Handle chords volume change with scheduling
+  const handleChordsVolumeChangeWithScheduling = useCallback((volume: number) => {
+    handleChordsVolumeChange(volume);
 
     // If we're currently playing, reschedule notes to apply the new volume
     if (isPlaying) {
@@ -446,7 +441,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       // Reschedule from current position with new volume
       scheduleNotes(processedSong, currentTime, songDuration);
     }
-  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration]);
+  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
 
   // Update visible notes based on current time
   useEffect(() => {
@@ -481,17 +476,17 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         currentTime={currentTime}
         duration={songDuration}
         guitarType={guitarType}
-        onGuitarChange={handleGuitarTypeChange}
+        onGuitarChange={handleGuitarTypeChangeWithScheduling}
         bpm={bpm}
-        onBpmChange={handleBpmChange}
+        onBpmChange={handleBpmChangeWithScheduling}
         metronomeEnabled={metronomeEnabled}
         onMetronomeChange={toggleMetronome}
         chordsEnabled={chordsEnabled}
         onChordsChange={handleChordsEnabledChange}
         chordsVolume={chordsVolume}
-        onChordsVolumeChange={handleChordsVolumeChange}
+        onChordsVolumeChange={handleChordsVolumeChangeWithScheduling}
         isMuted={isMuted}
-        onMuteChange={handleMuteChange}
+        onMuteChange={handleMuteChangeWithScheduling}
         loopEnabled={loopEnabled}
         onLoopChange={handleLoopEnabledChange}
         loopStart={loopStart}
@@ -574,7 +569,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           </div>
           
           <div className="notes-container">
-            {visibleNotes.map((note, index) => (
+            {visibleNotes.map((note: StringFretNote, index: number) => (
               <NoteElement 
                 key={`${note.string}-${note.time}-${index}`}
                 note={note}
