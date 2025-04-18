@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { SongData } from '../types/SongTypes';
+import React, { useState, useEffect } from 'react';
+import { SongData, StringFretNote } from '../types/SongTypes';
 import './MobileTablaturePlayer.css';
 import VexStaffDisplay from './VexStaffDisplay';
 import { TablatureGrid } from './TablatureGrid';
@@ -12,6 +12,9 @@ import { usePlayerSettings } from '../hooks/usePlayerSettings';
 import { useSongProcessor } from '../hooks/useSongProcessor';
 import { useTransportControl } from '../hooks/useTransportControl';
 import { GuitarType } from '../utils/GuitarSampler';
+import GuitarString from './GuitarString';
+import NoteElement from './NoteElement';
+import * as Tone from 'tone';
 
 // Helper function to format time as MM:SS
 const formatTime = (time: number) => {
@@ -45,6 +48,8 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   const {
     processedSong,
     songDuration,
+    visibleNotes,
+    clearNotes
   } = useSongProcessor({
     song,
     currentTime,
@@ -151,6 +156,60 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     currentTime,
     basePixelsPerBeat
   });
+
+  // Update current time based on Transport position
+  useEffect(() => {
+    let animationFrame: number;
+    let lastKnownTime = 0;
+
+    const updateTime = (timestamp: number) => {
+      if (isPlaying) {
+        // Skip updates during the reset animation to prevent visual glitches
+        if (isResetAnimating) {
+          animationFrame = requestAnimationFrame(updateTime);
+          return;
+        }
+        
+        const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
+        
+        if (loopEnabled) {
+          // Check if we're at or beyond the loop end point
+          if (transportTimeInBeats >= loopEnd) {
+            // Don't update the time past loop end - the loopId in scheduleNotes will handle
+            // jumping back to loop start
+            animationFrame = requestAnimationFrame(updateTime);
+            return;
+          }
+          
+          // Check if we've jumped backwards (loop restart)
+          if (lastKnownTime > transportTimeInBeats + 1) {
+            // Force-update the UI to reflect the loop restart
+            clearNotes(); // Clear notes for a clean restart
+          }
+        } else if (transportTimeInBeats >= songDuration) {
+          handleStop();
+          return;
+        }
+
+        // Store the current time for the next frame
+        lastKnownTime = transportTimeInBeats;
+        
+        setCurrentTime(transportTimeInBeats);
+      }
+      animationFrame = requestAnimationFrame(updateTime);
+    };
+
+    if (isPlaying) {
+      lastKnownTime = currentTime;
+      animationFrame = requestAnimationFrame(updateTime);
+    }
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop, clearNotes]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -409,6 +468,22 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
               />
             </>
           )}
+          
+          <div className="strings-container">
+            {[1, 2, 3, 4, 5, 6].map(stringNum => (
+              <GuitarString key={stringNum} stringNumber={stringNum} />
+            ))}
+          </div>
+          
+          <div className="notes-container">
+            {visibleNotes.map((note: StringFretNote, index: number) => (
+              <NoteElement 
+                key={`${note.string}-${note.time}-${index}`}
+                note={note}
+                currentTime={currentTime}
+              />
+            ))}
+          </div>
         </div>
         <div className="trigger-line" />
       </div>
