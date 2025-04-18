@@ -133,6 +133,10 @@ export const useNotePlayer = ({
         // Signal that we're resetting for animation purposes
         onResetAnimation();
         
+        // Reset transport position to loop start
+        const loopStartSeconds = loopStart * (60 / Tone.Transport.bpm.value);
+        Tone.Transport.seconds = loopStartSeconds;
+        
         // Reset to loop start point and reschedule notes
         scheduleNotes(song, loopStart, songDuration);
       }, loopEndTime);
