@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
+import MobileTablaturePlayer from './components/MobileTablaturePlayer';
 import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
@@ -104,36 +105,26 @@ function App() {
     return <div className="error-message">Error: {error}</div>;
   }
 
-  // Mobile landscape layout - Temporarily commented out for debugging
-  /*
+  // Mobile landscape layout
   if (isMobile && isLandscape) {
     return (
       <ZoomProvider>
         <div className="App App-mobile-landscape">
-          <header className="App-header-mobile-landscape">
-            <img 
-              src={`${process.env.PUBLIC_URL}/string-slinger.png`} 
-              alt="String Slinger" 
-              className="logo-mobile" 
-              style={{ 
-                height: '40px', 
-                margin: '10px',
-                position: 'absolute',
-                top: '5px',
-                left: '5px'
-              }}
-            />
-          </header>
           <main>
             {currentSong && (
-              <>THIS IS MOBILE TAB PLAYER</>
+              <MobileTablaturePlayer 
+                song={currentSong} 
+                songList={songList}
+                currentSongId={getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id)}
+                onSongChange={handleSongChange}
+                isLoading={isLoading}
+              />
             )}
           </main>
         </div>
       </ZoomProvider>
     );
   }
-  */
 
   // Default desktop layout (now always rendered)
   return (
