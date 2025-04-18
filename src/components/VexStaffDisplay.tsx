@@ -13,6 +13,7 @@ interface VexStaffDisplayProps {
   loopEnd?: number;
   nightMode?: boolean;
   chords?: ChordData[];
+  scale?: number;
 }
 
 interface GroupedNote {
@@ -303,7 +304,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   loopStart = 0,
   loopEnd = 0,
   nightMode = false,
-  chords = []
+  chords = [],
+  scale = 1
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const factoryRef = useRef<Factory | null>(null);
@@ -366,16 +368,18 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       renderer: {
         elementId: containerRef.current.id || 'vf-container',
         width: calculatedWidth,
-        height: 180,
+        height: 180 * scale, // Scale the height
         background: nightMode ? '#1a1a1a' : '#ffffff'
       }
     });
     
     const context = factory.getContext();
+    context.scale(scale, scale); // Apply scaling to the entire context
+
     const system = factory.System({
       x: STAVE_LEFT_PADDING,
-      width: calculatedWidth - (STAVE_LEFT_PADDING * 2),
-      y: 40
+      width: (calculatedWidth - (STAVE_LEFT_PADDING * 2)) / scale, // Adjust width for scale
+      y: scale < 1 ? 20 : 40 // Reduce y-coordinate when scaled down to shift up
     });
     
     try {
@@ -547,7 +551,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         texts.forEach(text => text.remove());
       }
     };
-  }, [notes, timeSignature, currentTime, nightMode, MEASURE_WIDTH, SCROLL_SCALE, chords]);
+  }, [notes, timeSignature, currentTime, nightMode, MEASURE_WIDTH, SCROLL_SCALE, chords, scale]);
 
   // Effect for handling active note highlighting and scrolling
   useEffect(() => {

@@ -415,6 +415,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
           loopEnd={loopEnd}
           nightMode={nightMode}
           chords={processedSong.chords}
+          scale={0.65}
         />
       </div>
 
