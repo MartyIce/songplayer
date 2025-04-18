@@ -6,7 +6,6 @@ import GuitarString from './GuitarString';
 import NoteElement from './NoteElement';
 import Controls from './Controls';
 import VexStaffDisplay from './VexStaffDisplay';
-import { convertSongToStringFret } from '../utils/noteConverter';
 import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
 import { STORAGE_KEYS, saveToStorage, getFromStorage } from '../utils/localStorage';
 import { useZoom } from '../contexts/ZoomContext';
@@ -17,6 +16,7 @@ import { useLoopControl } from '../shared/hooks/useLoopControl';
 import { useScrollControl } from '../hooks/useScrollControl';
 import { usePlayerSettings } from '../hooks/usePlayerSettings';
 import { TablatureGrid } from './TablatureGrid';
+import { useSongProcessor } from '../hooks/useSongProcessor';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -38,26 +38,26 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     saveToStorage(STORAGE_KEYS.CURRENT_SONG, currentSongId);
   }, [currentSongId]);
 
-  // Keep both the original song and the processed version
-  const [originalSong, processedSong] = useMemo(() => {
-    if (song.tuning) {
-      // If the song has tuning, it's in pitch format and needs conversion
-      const converted = convertSongToStringFret(song);
-      return [song, converted];
-    }
-    // If no tuning, it's already in string/fret format
-    return [song, song];
-  }, [song.title]);
-
-  const { zoomLevel } = useZoom();
-  const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
-  
-  // State declarations
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
-  const [visibleNotes, setVisibleNotes] = useState<StringFretNote[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Process song data using the hook
+  const {
+    originalSong,
+    processedSong,
+    songDuration,
+    visibleNotes,
+    clearNotes
+  } = useSongProcessor({
+    song,
+    currentTime,
+    isResetAnimating
+  });
+
+  const { zoomLevel } = useZoom();
+  const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
   
   // Get player settings from the hook
   const {
@@ -82,16 +82,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const scheduledNotes = useRef<number[]>([]);
   
   // Memoize props for useMetronome to ensure stable references
-  const metronomeNotes = useMemo(() => originalSong.notes, [originalSong.title]);
-  const metronomeTimeSignature = useMemo(() => originalSong.timeSignature, [originalSong.title]);
+  const metronomeNotes = useMemo(() => originalSong.notes, [originalSong.notes]);
+  const metronomeTimeSignature = useMemo(() => originalSong.timeSignature, [originalSong.timeSignature]);
 
-  // Calculate the total duration of the song in beats
-  const songDuration = useMemo(() => {
-    if (!processedSong.notes.length) return 0;
-    const lastNote = [...processedSong.notes].sort((a, b) => (b.time + b.duration) - (a.time + a.duration))[0];
-    return lastNote.time + lastNote.duration;
-  }, [processedSong.notes]);
-  
   const handleResetAnimation = useCallback(() => {
     setIsResetAnimating(true);
     setTimeout(() => {
@@ -178,7 +171,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       scheduledNotes.current.forEach(id => Tone.Transport.clear(id));
       scheduledNotes.current = [];
     };
-  }, [song, songDuration]);
+  }, [song, songDuration, handleBpmChange]);
   
   // Update handleMuteChange to use clearScheduledNotes
   const handleMuteChangeWithScheduling = useCallback((muted: boolean) => {
@@ -251,7 +244,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
           // Check if we've jumped backwards (loop restart)
           if (lastKnownTime > transportTimeInBeats + 1) {
             // Force-update the UI to reflect the loop restart
-            setVisibleNotes([]); // Clear notes for a clean restart
+            clearNotes(); // Clear notes for a clean restart
           }
         } else if (transportTimeInBeats >= songDuration) {
           handleStop();
@@ -276,7 +269,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop]);
+  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop, clearNotes]);
 
   // Calculate the required width for the entire song
   const contentWidth = useMemo(() => {
@@ -299,30 +292,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       scheduleNotes(processedSong, currentTime, songDuration);
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
-
-  // Update visible notes based on current time
-  useEffect(() => {
-    // If we're in the middle of a loop reset animation, don't update the notes
-    // This prevents flickering during the loop transition
-    if (isResetAnimating) {
-      return;
-    }
-    
-    // Show all notes, but still handle loop boundaries
-    const visible = processedSong.notes.filter(
-      (note: Note) => {
-        // Filter out rest notes - they should not be displayed in the tablature
-        if ('rest' in note) {
-          return false;
-        }
-        
-        // Show all notes, regardless of loop state
-        return true;
-      }
-    ) as StringFretNote[];
-    
-    setVisibleNotes(visible);
-  }, [currentTime, processedSong.notes, isResetAnimating]);
 
   // Handle play button
   const handlePlay = useCallback(async () => {
