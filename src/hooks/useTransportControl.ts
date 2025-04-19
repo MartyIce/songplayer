@@ -52,55 +52,66 @@ export const useTransportControl = ({
     }
   }, [isPlaying, clearScheduledNotes, clearScheduledClicks, setIsPlaying]);
 
+  const startPlayback = useCallback(async (startTime: number) => {
+    try {
+      await Tone.start();
+      console.log('Tone.js context started');
+
+      Tone.Transport.cancel();
+      clearScheduledNotes();
+      clearScheduledClicks();
+      
+      Tone.Transport.seconds = startTime * (60 / Tone.Transport.bpm.value);
+      
+      scheduleNotes(processedSong, startTime, songDuration);
+      if (metronomeEnabled) {
+        scheduleMetronomeClicks(startTime);
+      }
+      
+      console.log('Starting transport at position:', Tone.Transport.seconds);
+      Tone.Transport.start();
+      setIsPlaying(true);
+      console.log('Transport started, playback began');
+    } catch (error) {
+      console.error('Error starting playback:', error);
+    }
+  }, [
+    scheduleNotes,
+    processedSong,
+    songDuration,
+    metronomeEnabled,
+    scheduleMetronomeClicks,
+    setIsPlaying,
+    clearScheduledNotes,
+    clearScheduledClicks
+  ]);
+
   const handlePlay = useCallback(async () => {
     if (!containerRef.current) {
       console.warn('Container not ready yet');
       return;
     }
 
-    try {
-      await Tone.start();
-      console.log('Tone.js context started');
-
-      if (!isPlaying) {
-        Tone.Transport.cancel();
-        
-        if (currentTime >= songDuration) {
-          setCurrentTime(0);
-          Tone.Transport.seconds = 0;
-        }
-        
-        if (loopEnabled) {
-          setCurrentTime(loopStart);
-          Tone.Transport.seconds = loopStart * (60 / Tone.Transport.bpm.value);
-        }
-        
-        scheduleNotes(processedSong, currentTime, songDuration);
-        if (metronomeEnabled) {
-          scheduleMetronomeClicks(currentTime);
-        }
-        
-        console.log('Starting transport at position:', Tone.Transport.seconds);
-        Tone.Transport.start();
-        setIsPlaying(true);
-        console.log('Transport started, playback began');
+    if (!isPlaying) {
+      if (currentTime >= songDuration) {
+        setCurrentTime(0);
+        startPlayback(0);
+      } else {
+        startPlayback(currentTime);
       }
-    } catch (error) {
-      console.error('Error starting playback:', error);
     }
-  }, [
-    isPlaying,
-    currentTime,
-    songDuration,
-    loopEnabled,
-    loopStart,
-    scheduleNotes,
-    processedSong,
-    metronomeEnabled,
-    scheduleMetronomeClicks,
-    setCurrentTime,
-    setIsPlaying
-  ]);
+  }, [isPlaying, currentTime, songDuration, setCurrentTime, startPlayback]);
+
+  const restartFromBeginning = useCallback(async () => {
+    // Stop the transport first to ensure clean state
+    Tone.Transport.stop();
+    clearScheduledNotes();
+    clearScheduledClicks();
+    
+    // Reset time and start playback
+    setCurrentTime(0);
+    await startPlayback(0);
+  }, [setCurrentTime, startPlayback, clearScheduledNotes, clearScheduledClicks]);
 
   const handlePlayPause = useCallback(async () => {
     if (isPlaying) {
@@ -109,6 +120,17 @@ export const useTransportControl = ({
       handlePlay();
     }
   }, [isPlaying, handlePause, handlePlay]);
+
+  // Handle song end and auto-restart
+  useEffect(() => {
+    const handleSongEnd = async () => {
+      if (isPlaying && currentTime >= songDuration && !loopEnabled) {
+        await restartFromBeginning();
+      }
+    };
+
+    handleSongEnd();
+  }, [isPlaying, currentTime, songDuration, loopEnabled, restartFromBeginning]);
 
   // Initialize Tone.Transport
   useEffect(() => {

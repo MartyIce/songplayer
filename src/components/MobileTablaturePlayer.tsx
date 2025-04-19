@@ -16,6 +16,7 @@ import { GuitarString } from './GuitarString';
 import NoteElement from './NoteElement';
 import * as Tone from 'tone';
 import { useSongSelection } from '../hooks/useSongSelection';
+import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
 
 // Helper function to format time as MM:SS
 const formatTime = (time: number) => {
@@ -176,59 +177,22 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     resetScroll();
   }, [handleStop, resetScroll]);
 
-  // Update current time based on Transport position
-  useEffect(() => {
-    let animationFrame: number;
-    let lastKnownTime = 0;
-
-    const updateTime = (timestamp: number) => {
-      if (isPlaying) {
-        // Skip updates during the reset animation to prevent visual glitches
-        if (isResetAnimating) {
-          animationFrame = requestAnimationFrame(updateTime);
-          return;
-        }
-        
-        const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
-        
-        if (loopEnabled) {
-          // Check if we're at or beyond the loop end point
-          if (transportTimeInBeats >= loopEnd) {
-            // Don't update the time past loop end - the loopId in scheduleNotes will handle
-            // jumping back to loop start
-            animationFrame = requestAnimationFrame(updateTime);
-            return;
-          }
-          
-          // Check if we've jumped backwards (loop restart)
-          if (lastKnownTime > transportTimeInBeats + 1) {
-            // Force-update the UI to reflect the loop restart
-            clearNotes(); // Clear notes for a clean restart
-          }
-        } else if (transportTimeInBeats >= songDuration) {
-          handleStopWithScroll();
-          return;
-        }
-
-        // Store the current time for the next frame
-        lastKnownTime = transportTimeInBeats;
-        
-        setCurrentTime(transportTimeInBeats);
-      }
-      animationFrame = requestAnimationFrame(updateTime);
-    };
-
-    if (isPlaying) {
-      lastKnownTime = currentTime;
-      animationFrame = requestAnimationFrame(updateTime);
-    }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStopWithScroll, clearNotes]);
+  // Use the shared playback loop hook
+  usePlaybackLoop({
+    isPlaying,
+    isResetAnimating,
+    currentTime,
+    songDuration,
+    loopEnabled,
+    loopEnd,
+    setCurrentTime,
+    clearNotes,
+    clearScheduledNotes,
+    scheduleNotes,
+    scheduleMetronomeClicks: () => {},
+    metronomeEnabled,
+    processedSong
+  });
 
   const togglePlay = () => {
     if (isPlaying) {

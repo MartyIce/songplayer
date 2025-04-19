@@ -19,6 +19,7 @@ import { TablatureGrid } from './TablatureGrid';
 import { useSongProcessor } from '../hooks/useSongProcessor';
 import { useTransportControl } from '../hooks/useTransportControl';
 import { useSongSelection } from '../hooks/useSongSelection';
+import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -154,6 +155,23 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     processedSong
   });
 
+  // Use the shared playback loop hook
+  usePlaybackLoop({
+    isPlaying,
+    isResetAnimating,
+    currentTime,
+    songDuration,
+    loopEnabled,
+    loopEnd,
+    setCurrentTime,
+    clearNotes,
+    clearScheduledNotes,
+    scheduleNotes,
+    scheduleMetronomeClicks,
+    metronomeEnabled,
+    processedSong
+  });
+
   // Initialize Tone.Transport
   useEffect(() => {
     // Set initial tempo and time signature
@@ -209,60 +227,6 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const durationBasedWidth = songDuration * basePixelsPerBeat;
     return Math.max(minWidth, durationBasedWidth + 400); // Add extra padding for visibility
   }, [songDuration, basePixelsPerBeat]);
-
-  // Update current time based on Transport position
-  useEffect(() => {
-    let animationFrame: number;
-    let lastKnownTime = 0;
-
-    const updateTime = (timestamp: number) => {
-      if (isPlaying) {
-        // Skip updates during the reset animation to prevent visual glitches
-        if (isResetAnimating) {
-          animationFrame = requestAnimationFrame(updateTime);
-          return;
-        }
-        
-        const transportTimeInBeats = Tone.Transport.seconds * (Tone.Transport.bpm.value / 60);
-        
-        if (loopEnabled) {
-          // Check if we're at or beyond the loop end point
-          if (transportTimeInBeats >= loopEnd) {
-            // Don't update the time past loop end - the loopId in scheduleNotes will handle
-            // jumping back to loop start
-            animationFrame = requestAnimationFrame(updateTime);
-            return;
-          }
-          
-          // Check if we've jumped backwards (loop restart)
-          if (lastKnownTime > transportTimeInBeats + 1) {
-            // Force-update the UI to reflect the loop restart
-            clearNotes(); // Clear notes for a clean restart
-          }
-        } else if (transportTimeInBeats >= songDuration) {
-          handleStopWithScroll();
-          return;
-        }
-
-        // Store the current time for the next frame
-        lastKnownTime = transportTimeInBeats;
-        
-        setCurrentTime(transportTimeInBeats);
-      }
-      animationFrame = requestAnimationFrame(updateTime);
-    };
-
-    if (isPlaying) {
-      lastKnownTime = currentTime;
-      animationFrame = requestAnimationFrame(updateTime);
-    }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStopWithScroll, clearNotes]);
 
   // Handle guitar type change with scheduling
   const handleGuitarTypeChangeWithScheduling = useCallback(async (type: GuitarType) => {
