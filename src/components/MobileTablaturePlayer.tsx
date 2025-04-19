@@ -274,10 +274,10 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
         <div className="mobile-controls-group">
           <div className="mobile-play-controls">
             <button onClick={togglePlay} type="button">
-              {isPlaying ? '⏸' : '▶'}
+              {isPlaying ? '⏸ Pause' : '▶ Play'}
             </button>
             <button onClick={handleStop} type="button">
-              ⏹
+              ⏹ Stop
             </button>
           </div>
           <div className="mobile-bpm-control">

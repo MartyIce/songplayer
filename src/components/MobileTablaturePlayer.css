@@ -34,17 +34,38 @@
 }
 
 .mobile-play-controls button {
-  padding: 8px 12px;
-  font-size: 18px;
-  background-color: #444;
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  color: white;
+  font-size: 16px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  color: white;
 }
 
-.mobile-play-controls button:hover {
-  background-color: #555;
+.mobile-play-controls button:first-child {
+  background-color: #4caf50;
+}
+
+.mobile-play-controls button:first-child:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+.mobile-play-controls button:last-child {
+  background-color: #f44336;
+}
+
+.mobile-play-controls button:last-child:hover {
+  background-color: #da190b;
+  transform: scale(1.05);
+}
+
+.mobile-play-controls button:active {
+  transform: scale(0.98);
 }
 
 .mobile-bpm-control {
