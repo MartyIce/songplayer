@@ -33,13 +33,15 @@ export const GuitarString: React.FC<GuitarStringProps> = ({
     backgroundColor: stringColor,
   };
 
+  const tuningNote = STANDARD_TUNING[stringNumber - 1];
+
   return (
     <div 
       className={`guitar-string ${isMobile ? 'mobile-string' : ''}`} 
       style={style}
     >
-      <div className="string-label">{stringNumber}</div>
-      <div className="string-tuning">{STANDARD_TUNING[stringNumber - 1]}</div>
+      <div className="string-label">{tuningNote}</div>
+      <div className="string-tuning">{tuningNote}</div>
     </div>
   );
 }; 

@@ -161,13 +161,20 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
-    handleResumeAutoScroll
+    handleResumeAutoScroll,
+    resetScroll
   } = useScrollControl({
     containerRef,
     isPlaying,
     currentTime,
     basePixelsPerBeat
   });
+
+  // Update handleStop to include scroll reset
+  const handleStopWithScroll = useCallback(() => {
+    handleStop();
+    resetScroll();
+  }, [handleStop, resetScroll]);
 
   // Update current time based on Transport position
   useEffect(() => {
@@ -199,7 +206,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
             clearNotes(); // Clear notes for a clean restart
           }
         } else if (transportTimeInBeats >= songDuration) {
-          handleStop();
+          handleStopWithScroll();
           return;
         }
 
@@ -221,7 +228,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop, clearNotes]);
+  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStopWithScroll, clearNotes]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -276,7 +283,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
             <button onClick={togglePlay} type="button">
               {isPlaying ? '⏸ Pause' : '▶ Play'}
             </button>
-            <button onClick={handleStop} type="button">
+            <button onClick={handleStopWithScroll} type="button">
               ⏹ Stop
             </button>
           </div>

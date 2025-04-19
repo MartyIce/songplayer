@@ -18,6 +18,7 @@ interface UseScrollControlReturn {
   handleTouchMove: (e: React.TouchEvent) => void;
   handleTouchEnd: () => void;
   handleResumeAutoScroll: () => void;
+  resetScroll: () => void;
 }
 
 export const useScrollControl = ({
@@ -49,6 +50,15 @@ export const useScrollControl = ({
     return () => clearTimeout(timeoutId);
   }, []);
 
+  // Reset scroll position
+  const resetScroll = useCallback(() => {
+    if (containerRef.current) {
+      const triggerLinePosition = containerRef.current.clientWidth / 2;
+      setScrollOffset(triggerLinePosition);
+      setIsManualScrolling(false);
+    }
+  }, []);
+
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -62,9 +72,9 @@ export const useScrollControl = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [isManualScrolling, isPlaying]);
 
-  // Auto-scroll during playback
+  // Auto-scroll during playback or when time changes
   useEffect(() => {
-    if (isPlaying && currentTime > 0 && containerRef.current && !isManualScrolling) {
+    if (containerRef.current && !isManualScrolling && !isDragging) {
       const containerWidth = containerRef.current.clientWidth;
       const newOffset = containerWidth / 2 - (currentTime * basePixelsPerBeat);
       
@@ -73,7 +83,7 @@ export const useScrollControl = ({
         setScrollOffset(newOffset);
       });
     }
-  }, [isPlaying, currentTime, basePixelsPerBeat, isManualScrolling]);
+  }, [currentTime, basePixelsPerBeat, isManualScrolling, isDragging]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
@@ -111,11 +121,11 @@ export const useScrollControl = ({
 
   const handleResumeAutoScroll = useCallback(() => {
     setIsManualScrolling(false);
-    if (containerRef.current && isPlaying) {
+    if (containerRef.current) {
       const containerWidth = containerRef.current.clientWidth;
       setScrollOffset(containerWidth / 2 - (currentTime * basePixelsPerBeat));
     }
-  }, [isPlaying, currentTime, basePixelsPerBeat]);
+  }, [currentTime, basePixelsPerBeat]);
 
   return {
     scrollOffset,
@@ -127,6 +137,7 @@ export const useScrollControl = ({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
-    handleResumeAutoScroll
+    handleResumeAutoScroll,
+    resetScroll
   };
 }; 

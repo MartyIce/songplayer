@@ -183,13 +183,20 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
-    handleResumeAutoScroll
+    handleResumeAutoScroll,
+    resetScroll
   } = useScrollControl({
     containerRef,
     isPlaying,
     currentTime,
     basePixelsPerBeat
   });
+
+  // Update handleStop to include scroll reset
+  const handleStopWithScroll = useCallback(() => {
+    handleStop();
+    resetScroll();
+  }, [handleStop, resetScroll]);
 
   // Calculate content transform based on scroll offset
   const getContentTransform = useCallback(() => {
@@ -233,7 +240,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
             clearNotes(); // Clear notes for a clean restart
           }
         } else if (transportTimeInBeats >= songDuration) {
-          handleStop();
+          handleStopWithScroll();
           return;
         }
 
@@ -255,7 +262,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStop, clearNotes]);
+  }, [isPlaying, songDuration, loopEnabled, loopEnd, isResetAnimating, currentTime, handleStopWithScroll, clearNotes]);
 
   // Handle guitar type change with scheduling
   const handleGuitarTypeChangeWithScheduling = useCallback(async (type: GuitarType) => {
@@ -320,7 +327,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       <Controls
         isPlaying={isPlaying}
         onPlay={handlePlayPause}
-        onStop={handleStop}
+        onStop={handleStopWithScroll}
         currentTime={currentTime}
         duration={songDuration}
         guitarType={guitarType}

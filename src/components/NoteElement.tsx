@@ -16,12 +16,12 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime, scale = 1 
   const basePixelsPerBeat = 60 * zoomLevel;
   const isActive = currentTime >= note.time && currentTime < note.time + note.duration;
   
-  // Calculate scaled dimensions
+  // Calculate scaled dimensions - matching GuitarString values
   const baseHeight = 30;
   const scaledHeight = baseHeight * scale;
-  const basePaddingTop = 40;
+  const basePaddingTop = 20; // Match GuitarString paddingTop
   const scaledPaddingTop = basePaddingTop * scale;
-  const baseStringSpacing = 33.33; // Approximate base spacing between strings
+  const baseStringSpacing = 40; // Match GuitarString baseStringSpacing
   const scaledStringSpacing = baseStringSpacing * scale;
 
   const style: React.CSSProperties = {

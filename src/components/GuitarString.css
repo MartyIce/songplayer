@@ -11,6 +11,7 @@
 .string-label {
   position: absolute;
   left: -50px;
+  top: 50%;
   color: #4e3926;
   font-size: 14px;
   font-weight: bold;
@@ -24,17 +25,29 @@
 
 .string-tuning {
   position: absolute;
-  right: 10px;
-  color: #4e3926;
-  font-size: 12px;
-  font-style: italic;
+  right: 15px;
+  top: 50%;
   transform: translateY(-50%);
+  color: #4e3926;
+  font-size: 14px;
+  font-style: italic;
+  z-index: 5;
+  background-color: rgba(255, 255, 255, 0.4);
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Hide labels in mobile view */
-.mobile-string .string-label,
+/* Adjust label sizes for mobile */
+.mobile-string .string-label {
+  font-size: 12px;
+  left: -35px;
+  width: 30px;
+}
+
 .mobile-string .string-tuning {
-  display: none;
+  font-size: 12px;
+  padding: 2px 6px;
 }
 
 /* Add string tuning labels on the right side */
