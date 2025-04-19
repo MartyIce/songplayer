@@ -317,6 +317,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
+  const [scaleDivisor, setScaleDivisor] = useState(scale * 2.3); // using temporary slider, this seems a good value
   const { zoomLevel } = useZoom();
   
   // Apply zoom to scaling factors
@@ -334,9 +335,16 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
 
   // Calculate target scroll position for centering
   const calculateTargetScrollLeft = useCallback((containerWidth: number): number => {
-    const ret = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + (CLEF_WIDTH / 2);
+    // When scale is smaller, more content is visible at once
+    // So we need to adjust the scroll position by the inverse of the scale
+    // This ensures smaller scale = larger scroll position to compensate
+    const scaleAdjustedPosition = (currentTime * SCROLL_SCALE) / scaleDivisor;
+    const scaleAdjustedClefWidth = CLEF_WIDTH / scaleDivisor;
+    
+    // Center the current position, accounting for scale
+    const ret = scaleAdjustedPosition - (containerWidth / 2) + (scaleAdjustedClefWidth / 2);
     return ret;
-  }, [currentTime, SCROLL_SCALE]);
+  }, [currentTime, SCROLL_SCALE, scaleDivisor]);
 
   // Helper to get the X position for loop markers
   const getLoopMarkerPosition = useCallback((time: number): number => {
@@ -712,6 +720,34 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
 
   return (
     <div className="vex-staff-display" data-night-mode={nightMode}>
+
+
+      {/* ScaleDivisor tester */}
+      {/* <div style={{ 
+        position: 'absolute', 
+        top: '5px', 
+        left: '50%', 
+        transform: 'translateX(-50%)',
+        zIndex: 1000,
+        background: 'rgba(255, 255, 255, 0.9)',
+        padding: '5px',
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
+      }}>
+        <span style={{ fontSize: '12px' }}>Scale Divisor: {scaleDivisor.toFixed(2)}</span>
+        <input
+          type="range"
+          min="0.1"
+          max="2"
+          step="0.05"
+          value={scaleDivisor}
+          onChange={(e) => setScaleDivisor(parseFloat(e.target.value))}
+          style={{ width: '100px' }}
+        />
+      </div> */}
+
       {manualScrollMode && (
         <button 
           className="staff-resume-button visible"
