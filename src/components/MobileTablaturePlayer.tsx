@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SongData, StringFretNote } from '../types/SongTypes';
 import './MobileTablaturePlayer.css';
 import VexStaffDisplay from './VexStaffDisplay';
@@ -42,7 +42,6 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [bpm, setBpm] = useState(song.bpm);
 
   // Process song data using the hook
   const {
@@ -66,6 +65,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     chordsVolume,
     isMuted,
     nightMode,
+    bpm,
     handleBpmChange,
     handleGuitarTypeChange,
     handleChordsEnabledChange,
@@ -223,6 +223,34 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     setShowControls(!showControls);
   };
 
+  // Handle BPM change with scheduling
+  const handleBpmChangeWithScheduling = useCallback((newBpm: number) => {
+    handleBpmChange(newBpm);
+    
+    // Store current position and state
+    const wasPlaying = isPlaying;
+    const currentBeat = currentTime;
+    
+    // Pause if playing
+    if (wasPlaying) {
+      Tone.Transport.pause();
+    }
+    
+    // Update tempo
+    Tone.Transport.bpm.value = newBpm;
+    
+    // Convert current position from beats to seconds for the new tempo
+    const newPositionInSeconds = currentBeat * (60 / newBpm);
+    Tone.Transport.seconds = newPositionInSeconds;
+    
+    // Resume if was playing
+    if (wasPlaying) {
+      // Reschedule notes from current position
+      scheduleNotes(processedSong, currentBeat, songDuration);
+      Tone.Transport.start();
+    }
+  }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
+
   return (
     <div className="mobile-tablature-player">
       <div className="mobile-top-bar">
@@ -246,7 +274,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
               min="40"
               max="240"
               value={bpm}
-              onChange={(e) => setBpm(parseInt(e.target.value))}
+              onChange={(e) => handleBpmChangeWithScheduling(parseInt(e.target.value))}
             />
             <span className="bpm-value">{bpm} BPM</span>
           </div>
@@ -357,7 +385,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                   min="40"
                   max="200"
                   value={bpm}
-                  onChange={(e) => handleBpmChange(parseInt(e.target.value))}
+                  onChange={(e) => handleBpmChangeWithScheduling(parseInt(e.target.value))}
                 />
               </label>
               {chordsEnabled && (
