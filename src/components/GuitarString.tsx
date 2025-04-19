@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './GuitarString.css';
 
 interface GuitarStringProps {
   stringNumber: number;
   scale?: number;
   isMobile?: boolean;
+  containerHeight?: number; // Optional container height for dynamic sizing
 }
 
 const STANDARD_TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
@@ -12,11 +13,30 @@ const STANDARD_TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
 export const GuitarString: React.FC<GuitarStringProps> = ({ 
   stringNumber, 
   scale = 1,
-  isMobile = false
+  isMobile = false,
+  containerHeight
 }) => {
+  const [dynamicSpacing, setDynamicSpacing] = useState<number | null>(null);
+  
+  // Base values before scaling
   const baseStringSpacing = 40;
-  const scaledStringSpacing = baseStringSpacing * scale;
   const paddingTop = 20;
+
+  // Use container height to calculate dynamic spacing if provided
+  useEffect(() => {
+    if (containerHeight && isMobile) {
+      // Calculate available space for 6 strings (accounting for top and bottom padding)
+      const availableHeight = containerHeight - (paddingTop * 2 * scale);
+      // Calculate optimal string spacing to fit all strings
+      const optimalSpacing = availableHeight / 5; // 5 spaces between 6 strings
+      setDynamicSpacing(optimalSpacing);
+    } else {
+      setDynamicSpacing(null);
+    }
+  }, [containerHeight, scale, isMobile]);
+
+  // Use dynamic spacing if available, otherwise use the scaled default
+  const scaledStringSpacing = dynamicSpacing || (baseStringSpacing * scale);
   const scaledPaddingTop = paddingTop * scale;
 
   // Calculate string thickness based on string number (thicker for lower strings)

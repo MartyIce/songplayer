@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SongData, StringFretNote } from '../types/SongTypes';
 import './MobileTablaturePlayer.css';
 import VexStaffDisplay from './VexStaffDisplay';
@@ -47,6 +47,8 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [tabViewHeight, setTabViewHeight] = useState<number>(0);
+  const tabViewRef = useRef<HTMLDivElement>(null);
 
   // Process song data using the hook
   const {
@@ -233,6 +235,33 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
       Tone.Transport.start();
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
+
+  // Measure tab view height for responsive string spacing
+  useEffect(() => {
+    const measureTabViewHeight = () => {
+      if (tabViewRef.current) {
+        setTabViewHeight(tabViewRef.current.clientHeight);
+      }
+    };
+    
+    // Initial measurement
+    measureTabViewHeight();
+    
+    // Re-measure on window resize
+    window.addEventListener('resize', measureTabViewHeight);
+    
+    return () => {
+      window.removeEventListener('resize', measureTabViewHeight);
+    };
+  }, []);
+  
+  // Set tabViewRef current when containerRef changes
+  useEffect(() => {
+    if (containerRef && containerRef.current) {
+      const height = containerRef.current.clientHeight;
+      setTabViewHeight(height);
+    }
+  }, [containerRef]);
 
   return (
     <div className="mobile-tablature-player">
@@ -506,6 +535,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                 stringNumber={stringNum}
                 scale={0.8}
                 isMobile={true}
+                containerHeight={tabViewHeight}
               />
             ))}
           </div>
@@ -517,6 +547,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                 note={note}
                 currentTime={currentTime}
                 scale={0.8}
+                containerHeight={tabViewHeight}
               />
             ))}
           </div>

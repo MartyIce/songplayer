@@ -6,12 +6,18 @@ interface NoteElementProps {
   note: StringFretNote;
   currentTime: number;
   scale?: number;
+  containerHeight?: number; // Add container height prop for dynamic spacing
 }
 
 // Remove or comment out the unused TUNING constant
 // const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Standard guitar tuning
 
-const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime, scale = 1 }) => {
+const NoteElement: React.FC<NoteElementProps> = ({ 
+  note, 
+  currentTime, 
+  scale = 1,
+  containerHeight 
+}) => {
   const { zoomLevel } = useZoom();
   const basePixelsPerBeat = 60 * zoomLevel;
   const isActive = currentTime >= note.time && currentTime < note.time + note.duration;
@@ -22,7 +28,16 @@ const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime, scale = 1 
   const basePaddingTop = 20; // Match GuitarString paddingTop
   const scaledPaddingTop = basePaddingTop * scale;
   const baseStringSpacing = 40; // Match GuitarString baseStringSpacing
-  const scaledStringSpacing = baseStringSpacing * scale;
+  
+  // Calculate dynamic string spacing if container height is provided
+  let scaledStringSpacing = baseStringSpacing * scale;
+  if (containerHeight) {
+    // Calculate available space for 6 strings (accounting for top and bottom padding)
+    const availableHeight = containerHeight - (basePaddingTop * 2 * scale);
+    // Calculate optimal string spacing to fit all strings
+    const optimalSpacing = availableHeight / 5; // 5 spaces between 6 strings
+    scaledStringSpacing = optimalSpacing;
+  }
 
   const style: React.CSSProperties = {
     position: 'absolute',
