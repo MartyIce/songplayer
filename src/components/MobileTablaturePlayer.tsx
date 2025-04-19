@@ -15,6 +15,7 @@ import { GuitarType } from '../utils/GuitarSampler';
 import GuitarString from './GuitarString';
 import NoteElement from './NoteElement';
 import * as Tone from 'tone';
+import { useSongSelection } from '../hooks/useSongSelection';
 
 // Helper function to format time as MM:SS
 const formatTime = (time: number) => {
@@ -38,6 +39,9 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   onSongChange,
   isLoading
 }) => {
+  // Save current song ID whenever it changes
+  useSongSelection(currentSongId);
+
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
@@ -73,6 +77,14 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     handleMuteChange,
     handleNightModeChange
   } = usePlayerSettings(song);
+
+  // Initialize Tone.Transport
+  useEffect(() => {
+    // Set initial tempo and time signature
+    Tone.Transport.bpm.value = bpm;
+    const [beatsPerBar] = song.timeSignature || [3, 4];
+    Tone.Transport.timeSignature = beatsPerBar;
+  }, [song, bpm]);
 
   // Use the enhanced loop control hook
   const {

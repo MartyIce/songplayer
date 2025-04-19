@@ -7,7 +7,7 @@ import NoteElement from './NoteElement';
 import Controls from './Controls';
 import VexStaffDisplay from './VexStaffDisplay';
 import { guitarSampler, GuitarType } from '../utils/GuitarSampler';
-import { STORAGE_KEYS, saveToStorage, getFromStorage } from '../utils/localStorage';
+import { STORAGE_KEYS } from '../utils/localStorage';
 import { useZoom } from '../contexts/ZoomContext';
 import ZoomControls from './ZoomControls';
 import { useNotePlayer } from '../hooks/useNotePlayer';
@@ -18,6 +18,7 @@ import { usePlayerSettings } from '../hooks/usePlayerSettings';
 import { TablatureGrid } from './TablatureGrid';
 import { useSongProcessor } from '../hooks/useSongProcessor';
 import { useTransportControl } from '../hooks/useTransportControl';
+import { useSongSelection } from '../hooks/useSongSelection';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -35,9 +36,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   isLoading
 }) => {
   // Save current song ID whenever it changes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CURRENT_SONG, currentSongId);
-  }, [currentSongId]);
+  useSongSelection(currentSongId);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -158,12 +157,10 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   // Initialize Tone.Transport
   useEffect(() => {
     // Set initial tempo and time signature
-    const savedBpm = getFromStorage(STORAGE_KEYS.TEMPO, song.bpm);
-    Tone.Transport.bpm.value = savedBpm;
+    Tone.Transport.bpm.value = bpm;
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
-    handleBpmChange(savedBpm);
-  }, [song, handleBpmChange]);
+  }, [song, bpm]);
   
   // Update handleMuteChange to use clearScheduledNotes
   const handleMuteChangeWithScheduling = useCallback((muted: boolean) => {
