@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import * as Tone from 'tone';
 import { SongData, StringFretNote } from '../types/SongTypes';
 import './TablaturePlayer.css';
-import GuitarString from './GuitarString';
+import { GuitarString } from './GuitarString';
 import NoteElement from './NoteElement';
 import Controls from './Controls';
 import VexStaffDisplay from './VexStaffDisplay';

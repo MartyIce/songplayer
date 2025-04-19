@@ -3,17 +3,21 @@ import React from 'react';
 interface TablatureGridProps {
   songDuration: number;
   basePixelsPerBeat: number;
+  scale?: number; // Optional scale factor
 }
 
 export const TablatureGrid: React.FC<TablatureGridProps> = ({
   songDuration,
-  basePixelsPerBeat
+  basePixelsPerBeat,
+  scale = 1 // Default scale is 1
 }) => {
   const gridLines = [];
   
-  // Constants for grid layout
-  const containerHeight = 280;
-  const paddingTop = 40;
+  // Constants for grid layout - scaled by the scale factor
+  const baseContainerHeight = 280;
+  const basePaddingTop = 40;
+  const containerHeight = baseContainerHeight * scale;
+  const paddingTop = basePaddingTop * scale;
   const contentHeight = containerHeight - (paddingTop * 2);
   const stringSpacing = contentHeight / 5; // 5 spaces for 6 strings
   
@@ -45,11 +49,12 @@ export const TablatureGrid: React.FC<TablatureGridProps> = ({
         className="grid-line vertical" 
         style={{ 
           left: `${xPosition}px`,
-          opacity: 0.15
+          opacity: 0.15,
+          height: `${containerHeight}px` // Apply scaled height to vertical lines
         }}
       />
     );
   }
   
-  return <div className="grid-lines">{gridLines}</div>;
+  return <div className="grid-lines" style={{ height: `${containerHeight}px` }}>{gridLines}</div>;
 }; 

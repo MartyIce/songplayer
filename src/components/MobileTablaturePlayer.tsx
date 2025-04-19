@@ -12,7 +12,7 @@ import { usePlayerSettings } from '../hooks/usePlayerSettings';
 import { useSongProcessor } from '../hooks/useSongProcessor';
 import { useTransportControl } from '../hooks/useTransportControl';
 import { GuitarType } from '../utils/GuitarSampler';
-import GuitarString from './GuitarString';
+import { GuitarString } from './GuitarString';
 import NoteElement from './NoteElement';
 import * as Tone from 'tone';
 import { useSongSelection } from '../hooks/useSongSelection';
@@ -505,6 +505,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
           <TablatureGrid 
             songDuration={songDuration}
             basePixelsPerBeat={basePixelsPerBeat}
+            scale={0.8}
           />
           
           {loopEnabled && (
@@ -529,7 +530,12 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
           
           <div className="strings-container">
             {[1, 2, 3, 4, 5, 6].map(stringNum => (
-              <GuitarString key={stringNum} stringNumber={stringNum} />
+              <GuitarString 
+                key={stringNum} 
+                stringNumber={stringNum}
+                scale={0.8}
+                isMobile={true}
+              />
             ))}
           </div>
           
@@ -539,6 +545,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                 key={`${note.string}-${note.time}-${index}`}
                 note={note}
                 currentTime={currentTime}
+                scale={0.8}
               />
             ))}
           </div>

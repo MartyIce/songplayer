@@ -3,48 +3,43 @@ import './GuitarString.css';
 
 interface GuitarStringProps {
   stringNumber: number;
+  scale?: number;
+  isMobile?: boolean;
 }
 
-const GuitarString: React.FC<GuitarStringProps> = ({ stringNumber }) => {
-  // Standard tuning notes from highest to lowest
-  const tunings = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
-  const tuning = tunings[stringNumber - 1];
+const STANDARD_TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2'];
+
+export const GuitarString: React.FC<GuitarStringProps> = ({ 
+  stringNumber, 
+  scale = 1,
+  isMobile = false
+}) => {
+  const baseStringSpacing = 40;
+  const scaledStringSpacing = baseStringSpacing * scale;
+  const paddingTop = 20;
+  const scaledPaddingTop = paddingTop * scale;
+
+  // Calculate string thickness based on string number (thicker for lower strings)
+  const thickness = Math.min(4, 1 + (stringNumber - 1) * 0.5);
   
-  // Adjust string thickness based on string number (thicker for bass strings)
-  const getStringThickness = (stringNum: number) => {
-    switch(stringNum) {
-      case 1: return 1; // Thinnest (high E)
-      case 2: return 1.3;
-      case 3: return 1.6;
-      case 4: return 2;
-      case 5: return 2.5;
-      case 6: return 3; // Thickest (low E)
-      default: return 2;
-    }
+  // Calculate string color (darker for lower strings)
+  const brightness = Math.max(60, 100 - (stringNumber - 1) * 8);
+  const stringColor = `hsl(45, 40%, ${brightness}%)`;
+
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    top: `${scaledPaddingTop + (stringNumber - 1) * scaledStringSpacing}px`,
+    height: `${thickness}px`,
+    backgroundColor: stringColor,
   };
-  
-  // Adjust string color based on string number (first 3 are nylon, last 3 are wound)
-  const getStringColor = (stringNum: number) => {
-    return stringNum <= 3 
-      ? '#e0d6a9' // Brighter nylon color for high strings
-      : '#c0a478'; // Darker wound string color for bass strings
-  };
-  
+
   return (
     <div 
-      className="guitar-string"
-      style={{ 
-        height: `${getStringThickness(stringNumber)}px`,
-        backgroundColor: getStringColor(stringNumber),
-        opacity: 0.9,
-        boxShadow: `0 0 ${getStringThickness(stringNumber)}px rgba(0, 0, 0, 0.5)`
-      }}
-      data-string={stringNumber}
+      className={`guitar-string ${isMobile ? 'mobile-string' : ''}`} 
+      style={style}
     >
-      <div className="string-label">{tuning}</div>
-      <div className="string-tuning">{tuning}</div>
+      <div className="string-label">{stringNumber}</div>
+      <div className="string-tuning">{STANDARD_TUNING[stringNumber - 1]}</div>
     </div>
   );
-};
-
-export default GuitarString; 
+}; 

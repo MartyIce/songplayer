@@ -1,75 +1,50 @@
-import React, { useMemo } from 'react';
-import { useZoom } from '../contexts/ZoomContext';
+import React from 'react';
 import { StringFretNote } from '../types/SongTypes';
-import './NoteElement.css';
+import { useZoom } from '../contexts/ZoomContext';
 
 interface NoteElementProps {
   note: StringFretNote;
   currentTime: number;
+  scale?: number;
 }
 
 // Remove or comment out the unused TUNING constant
 // const TUNING = ['E4', 'B3', 'G3', 'D3', 'A2', 'E2']; // Standard guitar tuning
 
-const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime }) => {
+const NoteElement: React.FC<NoteElementProps> = ({ note, currentTime, scale = 1 }) => {
   const { zoomLevel } = useZoom();
-  const basePixelsPerBeat = useMemo(() => 60 * zoomLevel, [zoomLevel]); // Apply zoom to base scale
+  const basePixelsPerBeat = 60 * zoomLevel;
+  const isActive = currentTime >= note.time && currentTime < note.time + note.duration;
+  
+  // Calculate scaled dimensions
+  const baseHeight = 30;
+  const scaledHeight = baseHeight * scale;
+  const basePaddingTop = 40;
+  const scaledPaddingTop = basePaddingTop * scale;
+  const baseStringSpacing = 33.33; // Approximate base spacing between strings
+  const scaledStringSpacing = baseStringSpacing * scale;
 
-  // Calculate if note is active or past
-  const isActive = useMemo(() => {
-    return note.time <= currentTime && note.time + note.duration > currentTime;
-  }, [note.time, note.duration, currentTime]);
-
-  const isPast = useMemo(() => {
-    return note.time + note.duration <= currentTime;
-  }, [note.time, note.duration, currentTime]);
-
-  // Calculate position and width based on time and duration
-  const noteStyle = useMemo(() => {
-    // Calculate width based on note duration in beats
-    const width = note.duration * basePixelsPerBeat;
-    
-    // Calculate position based on time in beats
-    const xPosition = note.time * basePixelsPerBeat + 20; // Add left padding
-    
-    // Calculate vertical position based on string number (1-6)
-    // With flex layout, we need to calculate the position differently
-    // The container height is 280px with 40px padding top and bottom, leaving 200px for 6 strings
-    // Each string position is evenly distributed across 200px (the string-container's content area)
-    const containerHeight = 280;
-    const paddingTop = 40;
-    const contentHeight = containerHeight - (paddingTop * 2);
-    const stringSpacing = contentHeight / 5; // 5 spaces for 6 strings
-    const yPosition = paddingTop + ((note.string - 1) * stringSpacing);
-    
-    return {
-      left: `${xPosition}px`,
-      top: `${yPosition}px`,
-      width: `${width}px`,
-      height: '30px',
-      backgroundColor: isActive ? '#61dafb' : 'rgba(97, 218, 251, 0.5)',
-      opacity: isPast ? 0.5 : 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: '4px',
-      position: 'absolute' as const,
-      transform: 'translateY(-15px)', // Center vertically on the string
-      zIndex: isActive ? 2 : 1,
-      color: '#000',
-      fontWeight: 'bold',
-      fontSize: '14px',
-      cursor: 'default',
-      userSelect: 'none' as const,
-      boxShadow: isActive ? '0 0 8px rgba(97, 218, 251, 0.8)' : 'none',
-    };
-  }, [note.time, note.duration, note.string, isActive, isPast, basePixelsPerBeat]);
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    left: `${note.time * basePixelsPerBeat + 20}px`,
+    top: `${scaledPaddingTop + (note.string - 1) * scaledStringSpacing}px`,
+    width: `${note.duration * basePixelsPerBeat}px`,
+    height: `${scaledHeight}px`,
+    transform: `translateY(-${scaledHeight / 2}px)`,
+    backgroundColor: isActive ? '#c28738' : 'rgba(151, 114, 63, 0.7)',
+    zIndex: isActive ? 2 : 1,
+    boxShadow: isActive ? '0 0 8px rgba(255, 154, 0, 0.7)' : '0 2px 4px rgba(0, 0, 0, 0.3)',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    fontWeight: 'bold',
+    transition: 'background-color 0.2s ease, opacity 0.2s ease',
+  };
 
   return (
-    <div 
-      className={`note-element ${isActive ? 'active' : ''}`} 
-      style={noteStyle}
-    >
+    <div className={`note-element ${isActive ? 'active' : ''}`} style={style}>
       {note.fret}
     </div>
   );

@@ -1,24 +1,40 @@
 .guitar-string {
-  width: 100%;
-  background-color: #e0d6a9; /* Default nylon string color */
   position: relative;
+  width: 100%;
+  background-color: #e0d6a9;
+  opacity: 0.9;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
   margin: 0;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
   height: 2px;
 }
 
 .string-label {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #4e3926; /* Dark wood color */
-  font-size: 16px;
+  left: -50px;
+  color: #4e3926;
+  font-size: 14px;
   font-weight: bold;
-  z-index: 5;
-  background-color: rgba(255, 255, 255, 0.4); /* Translucent label */
-  padding: 4px 10px;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  width: 40px;
+  text-align: right;
+  padding-right: 8px;
+  background: transparent;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+
+.string-tuning {
+  position: absolute;
+  right: 10px;
+  color: #4e3926;
+  font-size: 12px;
+  font-style: italic;
+  transform: translateY(-50%);
+}
+
+/* Hide labels in mobile view */
+.mobile-string .string-label,
+.mobile-string .string-tuning {
+  display: none;
 }
 
 /* Add string tuning labels on the right side */
