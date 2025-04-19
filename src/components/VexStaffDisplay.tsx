@@ -335,16 +335,21 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
 
   // Calculate target scroll position for centering
   const calculateTargetScrollLeft = useCallback((containerWidth: number): number => {
-    // When scale is smaller, more content is visible at once
-    // So we need to adjust the scroll position by the inverse of the scale
-    // This ensures smaller scale = larger scroll position to compensate
-    const scaleAdjustedPosition = (currentTime * SCROLL_SCALE) / scaleDivisor;
-    const scaleAdjustedClefWidth = CLEF_WIDTH / scaleDivisor;
-    
-    // Center the current position, accounting for scale
-    const ret = scaleAdjustedPosition - (containerWidth / 2) + (scaleAdjustedClefWidth / 2);
+    if (scale !== 1) {
+      // When scale is smaller, more content is visible at once
+      // Scale factor of 2.3 was determined through testing
+      const scaleDivisor = scale * 2.3;
+      const scaleAdjustedPosition = (currentTime * SCROLL_SCALE) / scaleDivisor;
+      const scaleAdjustedClefWidth = CLEF_WIDTH / scaleDivisor;
+      
+      // Center the current position, accounting for scale
+      return scaleAdjustedPosition - (containerWidth / 2) + (scaleAdjustedClefWidth / 2);
+    }
+
+    // Original behavior when no scale adjustment needed
+    const ret = (currentTime * SCROLL_SCALE) - (containerWidth / 2) + (CLEF_WIDTH / 2);
     return ret;
-  }, [currentTime, SCROLL_SCALE, scaleDivisor]);
+  }, [currentTime, SCROLL_SCALE, scale]);
 
   // Helper to get the X position for loop markers
   const getLoopMarkerPosition = useCallback((time: number): number => {
