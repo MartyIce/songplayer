@@ -8,90 +8,100 @@
 }
 
 .mobile-top-bar {
-  height: 10vh;
   display: flex;
   align-items: center;
-  padding: 0 10px;
-  background-color: #1a1a1a;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  gap: 15px;
+  justify-content: space-between;
+  padding: 10px;
+  background-color: #333;
+  color: white;
 }
 
 .mobile-logo {
-  height: 8vh;
-  max-width: 150px;
-  object-fit: contain;
-  margin-right: auto;
+  height: 40px;
+  margin-right: 10px;
 }
 
 .mobile-controls-group {
   display: flex;
   align-items: center;
   gap: 15px;
-  margin-left: 15px;
+  flex: 1;
 }
 
 .mobile-play-controls {
   display: flex;
-  gap: 10px;
+  gap: 5px;
+}
+
+.mobile-play-controls button {
+  padding: 8px 12px;
+  font-size: 18px;
+  background-color: #444;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.mobile-play-controls button:hover {
+  background-color: #555;
 }
 
 .mobile-bpm-control {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: white;
   min-width: 200px;
 }
 
 .mobile-bpm-control input[type="range"] {
   flex: 1;
-  height: 24px;
-  accent-color: #2196F3;
 }
 
-.mobile-bpm-control .bpm-value {
-  min-width: 50px;
+.bpm-value {
+  min-width: 70px;
   text-align: right;
 }
 
-.mobile-menu-button {
+.mobile-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
 }
 
-.mobile-play-controls button {
-  padding: 8px 16px;
+.mobile-zoom-control button {
+  padding: 4px 8px;
+  font-size: 16px;
+  background-color: #444;
   border: none;
   border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.2s ease;
   color: white;
+  cursor: pointer;
 }
 
-.mobile-play-controls button:first-child {
-  background-color: #4caf50;
+.mobile-zoom-control button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.mobile-play-controls button:first-child:hover {
-  background-color: #45a049;
-  transform: scale(1.05);
+.mobile-zoom-control button:hover:not(:disabled) {
+  background-color: #555;
 }
 
-.mobile-play-controls button:last-child {
-  background-color: #f44336;
+.zoom-value {
+  min-width: 50px;
+  text-align: center;
 }
 
-.mobile-play-controls button:last-child:hover {
-  background-color: #da190b;
-  transform: scale(1.05);
-}
-
-.mobile-play-controls button:active {
-  transform: scale(0.98);
+.mobile-menu-button {
+  padding: 8px 12px;
+  font-size: 20px;
+  background-color: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  margin-left: 15px;
 }
 
 .mobile-controls-overlay {

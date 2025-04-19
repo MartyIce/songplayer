@@ -59,7 +59,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     isResetAnimating
   });
 
-  const { zoomLevel } = useZoom();
+  const { zoomLevel, setZoomLevel } = useZoom();
   const basePixelsPerBeat = 60 * zoomLevel;
 
   // Get player settings from the hook
@@ -289,6 +289,23 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
               onChange={(e) => handleBpmChangeWithScheduling(parseInt(e.target.value))}
             />
             <span className="bpm-value">{bpm} BPM</span>
+          </div>
+          <div className="mobile-zoom-control">
+            <button 
+              onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.1))}
+              type="button"
+              disabled={zoomLevel <= 0.5}
+            >
+              -
+            </button>
+            <span className="zoom-value">{Math.round(zoomLevel * 100)}%</span>
+            <button 
+              onClick={() => setZoomLevel(Math.min(2, zoomLevel + 0.1))}
+              type="button"
+              disabled={zoomLevel >= 2}
+            >
+              +
+            </button>
           </div>
         </div>
         <button 
