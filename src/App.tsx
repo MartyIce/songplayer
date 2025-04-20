@@ -44,6 +44,7 @@ const useMobileDetection = () => {
 
 // Define available songs metadata
 const songList = [
+  { id: 'deep-elem', name: 'Deep Elem Blues', filename: 'deep-elem-blues.json' },
   { id: 'roses', name: 'Give Me the Roses While I Live', filename: 'roses.json' },
   { id: 'giuliani-study-1', name: 'Giuliani Study No. 1', filename: 'giuliani-study-1.json' },
   { id: 'scarborough-fair', name: 'Scarborough Fair', filename: 'scarborough-fair.json' },
