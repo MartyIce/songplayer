@@ -443,15 +443,17 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       // Draw measure barlines
       while (currentMeasureTime <= lastNoteTime) {
-        // Calculate position based on SCROLL_SCALE to align with tablature grid lines
-        const x = CLEF_WIDTH + (currentMeasureTime * SCROLL_SCALE);
+        // Calculate position based on time and SCROLL_SCALE to align with tablature grid lines
+        // Position is determined by the time of the measure boundary multiplied by SCROLL_SCALE
+        // plus the clef width offset
+        const measurePosition = getXPositionForTime(currentMeasureTime);
         
         // Only draw the line if it's after the clef and time signature
-        if (x > CLEF_WIDTH) {
+        if (measurePosition > CLEF_WIDTH) {
           // Draw barline
           context.beginPath();
-          context.moveTo(x, stave.getYForLine(0));
-          context.lineTo(x, stave.getYForLine(4));
+          context.moveTo(measurePosition, stave.getYForLine(0));
+          context.lineTo(measurePosition, stave.getYForLine(4));
           context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
           context.setLineWidth(1);
           context.stroke();
@@ -465,8 +467,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           const text = document.createElementNS(svgNS, "text");
           // Position at the start of the measure, accounting for clef width
           const textX = measureNumber === 1 ? 
-            Math.max(CLEF_WIDTH + 5, x - MEASURE_WIDTH + 5) : // First measure after clef
-            ((CLEF_WIDTH + ((currentMeasureTime - beatsPerMeasure) * SCROLL_SCALE)) + 5); // Other measures start at their barline
+            Math.max(CLEF_WIDTH + 5, measurePosition - MEASURE_WIDTH + 5) : // First measure after clef
+            (getXPositionForTime(currentMeasureTime - beatsPerMeasure) + 5); // Other measures start at their barline
           text.setAttributeNS(null, "x", textX.toString());
           text.setAttributeNS(null, "y", yOffset.toString());
           text.setAttributeNS(null, "font-family", "Arial");
@@ -498,7 +500,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           }
         }
         
-        // Move to next measure boundary
+        // Move to next measure boundary based on time signature
         currentMeasureTime += beatsPerMeasure;
       }
       
