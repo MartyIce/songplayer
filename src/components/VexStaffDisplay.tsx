@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Factory, Voice, StaveNote, Formatter, Barline, Dot } from 'vexflow';
+import { Factory, Voice, StaveNote, Formatter, Barline, Dot, Accidental } from 'vexflow';
 import { Note, StringFretNote, ChordData } from '../types/SongTypes';
 import { useZoom } from '../contexts/ZoomContext';
 import './VexStaffDisplay.css';
@@ -69,10 +69,18 @@ function getPitchFromTab(note: StringFretNote): string {
   const semitones = note.fret;
   
   // Basic pitch calculation
-  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const baseIndex = notes.indexOf(noteName);
+  // Include both sharp and flat note names
+  const sharpNotes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const flatNotes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  
+  const baseIndex = sharpNotes.indexOf(noteName);
   const newIndex = (baseIndex + semitones) % 12;
   const octaveIncrease = Math.floor((baseIndex + semitones) / 12);
+  
+  // Prefer flat notation for common flat keys
+  // This is a simple approximation - ideally would check the song's key signature
+  const useFlats = [1, 3, 6, 8, 10].includes(newIndex); // Db, Eb, Gb, Ab, Bb
+  const notes = useFlats ? flatNotes : sharpNotes;
   
   return `${notes[newIndex]}${octave + octaveIncrease}`;
 }
@@ -203,11 +211,23 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
           return bOctave - aOctave;
         }
         
-        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const aIndex = notes.indexOf(aNoteName);
-        const bIndex = notes.indexOf(bNoteName);
+        // Use a complete note array including both sharps and flats
+        // to properly sort without converting flats to sharps
+        const noteValues: {[key: string]: number} = {
+          'C': 0, 'C#': 1, 'Db': 1,
+          'D': 2, 'D#': 3, 'Eb': 3,
+          'E': 4,
+          'F': 5, 'F#': 6, 'Gb': 6,
+          'G': 7, 'G#': 8, 'Ab': 8,
+          'A': 9, 'A#': 10, 'Bb': 10,
+          'B': 11
+        };
         
-        return bIndex - aIndex;
+        // Get numeric values for comparison
+        const aValue = noteValues[aNoteName] !== undefined ? noteValues[aNoteName] : 0;
+        const bValue = noteValues[bNoteName] !== undefined ? noteValues[bNoteName] : 0;
+        
+        return bValue - aValue;
       });
     }
   });
@@ -244,10 +264,22 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       });
     }
 
+    // Process the note names to have the correct VexFlow format
     const keys = group.notes.map(note => {
       const noteName = note.slice(0, -1);
       const octave = note.slice(-1);
-      return `${noteName.toLowerCase()}/${octave}`;
+      
+      // For VexFlow, we need to separate the accidental from the note
+      // VexFlow requires just the base note letter in the key string
+      // Accidentals are added separately using modifiers
+      let baseNoteName;
+      if (noteName.includes('#') || (noteName.includes('b') && noteName !== 'B')) {
+        baseNoteName = noteName.charAt(0).toLowerCase();
+      } else {
+        baseNoteName = noteName.toLowerCase();
+      }
+      
+      return `${baseNoteName}/${octave}`;
     });
     
     const duration = getVexflowDuration(group.duration);
@@ -256,6 +288,31 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       duration,
       autoStem: true
     }) as any;
+
+    // Add accidentals separately after creating the note
+    let hasAccidentals = false;
+    group.notes.forEach((note, i) => {
+      const noteName = note.slice(0, -1);
+      
+      // Check for accidentals (sharps and flats)
+      let accidental: Accidental;
+      if (noteName.includes('#')) {
+        // Add sharp accidental with proper spacing
+        accidental = new Accidental('#');
+        staveNote.addModifier(accidental, i);
+        hasAccidentals = true;
+      } else if (noteName.includes('b') && noteName !== 'B') {
+        // Add flat accidental with proper spacing
+        accidental = new Accidental('b');
+        staveNote.addModifier(accidental, i);
+        hasAccidentals = true;
+      }
+    });
+
+    // For notes with accidentals, add extra space between notes
+    if (hasAccidentals) {
+      staveNote.setXShift(-12);
+    }
 
     // Add dot for dotted notes
     if ([3.0, 1.5, 0.75].includes(group.duration)) {
