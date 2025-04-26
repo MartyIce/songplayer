@@ -6,6 +6,8 @@ import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
 import { ZoomProvider } from './contexts/ZoomContext';
+import TestPitchFromTab from './components/TestPitchFromTab';
+import StaffDebugger from './components/StaffDebugger';
 
 // Custom hook to detect mobile devices and orientation
 const useMobileDetection = () => {
@@ -136,6 +138,10 @@ function App() {
           <img src={`${process.env.PUBLIC_URL}/string-slinger.png`} alt="String Slinger" className="logo" />
         </header>
         <main>
+          {/* Uncomment the line below to test the getPitchFromTab function */}
+          {/* <TestPitchFromTab /> */}
+          {/* Uncomment the line below to debug staff rendering */}
+          {/* <StaffDebugger /> */}
           {currentSong && (
             <TablaturePlayer 
               song={currentSong} 
@@ -145,6 +151,7 @@ function App() {
               isLoading={isLoading}
             />
           )}
+          <StaffDebugger />
         </main>
       </div>
     </ZoomProvider>

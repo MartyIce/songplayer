@@ -11,6 +11,9 @@ export interface PitchNote extends BaseNote {
 export interface StringFretNote extends BaseNote {
   string: number;
   fret: number;
+  time: number;
+  duration: number;
+  origNoteDesc?: string;
 }
 
 export interface RestNote extends BaseNote {

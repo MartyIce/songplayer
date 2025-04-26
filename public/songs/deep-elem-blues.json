@@ -4,7 +4,7 @@
   "bpm": 92,
   "timeSignature": [4, 4],
   "key": "C",
-  "tuning": ["E4", "B3", "G3", "D3", "A2", "E2"],
+  "tuning": ["E5", "B4", "G4", "D4", "A3", "E3"],
   "notes": [
     { "rest": true, "time": 0.0, "duration": 2.0, "measure": 1 },
     { "note": "G4", "time": 2.0, "duration": 1.0, "measure": 1 },

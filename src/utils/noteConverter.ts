@@ -15,6 +15,7 @@ interface StringFretNote {
   time: number;
   duration: number;
   color?: string;
+  origNoteDesc?: string;
 }
 
 interface RestNote {
@@ -43,10 +44,10 @@ function findBestPosition(midiNote: number, tuning: string[]): { string: number;
   let bestFret = 0;
   let bestScore = Infinity;
 
-  // Standard guitar tuning from low to high (E2 to E4)
+  // Standard guitar tuning from low to high (E3 to E5)
   // These are the actual MIDI numbers for each string
-  const tuningMidi = [40, 45, 50, 55, 59, 64]; // E2, A2, D3, G3, B3, E4
-  const stringNames = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];
+  const tuningMidi = [40, 45, 50, 55, 59, 64]; // E3, A3, D4, G4, B4, E5
+  const stringNames = ['E3', 'A3', 'D4', 'G4', 'B4', 'E5'];
   
   // Try each string
   tuningMidi.forEach((openString, index) => {
@@ -121,6 +122,7 @@ export function convertNoteToStringFret(
     fret: position.fret,
     time: noteData.time,
     duration: noteData.duration,
+    origNoteDesc: noteData.note,
     ...(noteData.color && { color: noteData.color })
   };
 }
