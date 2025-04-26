@@ -352,7 +352,8 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       // For notes with accidentals or the first few notes, add extra space
       // to ensure proper visibility
       if (hasAccidentals || groupIndex < 4) {
-        staveNote.setXShift(-12);
+        // staveNote.setXShift(-12);
+        // staveNote.modifiers[0].setXShift(-12);
       }
   
       // Add dot for dotted notes
@@ -384,20 +385,20 @@ function positionNotes(groupedNotes: GroupedNote[],
   // Get all tickables in the voice
   const tickables = voice.getTickables();
   
-  // Set position for each note based on its time
-  groupedNotes.forEach((group, index) => {
-    if (index < tickables.length) {
-      const tickable = tickables[index];
-      // Set the x position based on the same scale factor as grid lines
-      const xPos = (group.time * scrollScale);
-      tickable.setXShift(xPos - tickable.getX());
+  // // Set position for each note based on its time
+  // groupedNotes.forEach((group, index) => {
+  //   if (index < tickables.length) {
+  //     const tickable = tickables[index];
+  //     // Set the x position based on the same scale factor as grid lines
+  //     const xPos = (group.time * scrollScale);
+  //     tickable.setXShift(xPos - tickable.getX());
       
-      // For first few notes (C4, C#4) - make sure they're clearly visible
-      if (index < 2) {
-        console.log(`Positioning note ${index}: time=${group.time}, x=${tickable.getX()}, shift=${xPos - tickable.getX()}`);
-      }
-    }
-  });
+  //     // For first few notes (C4, C#4) - make sure they're clearly visible
+  //     if (index < 2) {
+  //       console.log(`Positioning note ${index}: time=${group.time}, x=${tickable.getX()}, shift=${xPos - tickable.getX()}`);
+  //     }
+  //   }
+  // });
 }
 
 /**
@@ -572,8 +573,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         console.log("Special handling for test song notes");
         
         // Apply extra spacing for C4 and C#4 by using setXShift
-        if (vexNotes[0]) (vexNotes[0] as any).setXShift(15);
-        if (vexNotes[1]) (vexNotes[1] as any).setXShift(15);
+        // if (vexNotes[0]) (vexNotes[0] as any).setXShift(15);
+        // if (vexNotes[1]) (vexNotes[1] as any).setXShift(15);
       }
       
       formatter.joinVoices([voice])
