@@ -3,6 +3,7 @@
   "artist": "Unknown",
   "bpm": 92,
   "timeSignature": [4, 4],
+  "key": "C",
   "tuning": ["E4", "B3", "G3", "D3", "A2", "E2"],
   "notes": [
     { "rest": true, "time": 0.0, "duration": 2.0, "measure": 1 },

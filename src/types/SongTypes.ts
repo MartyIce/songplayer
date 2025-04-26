@@ -36,6 +36,7 @@ export interface SongData {
   artist: string;
   bpm: number;
   timeSignature: [number, number];
+  key?: string;
   tuning?: string[];
   notes: Note[];
   chords?: ChordData[];

@@ -8,6 +8,7 @@ interface VexStaffDisplayProps {
   notes: Note[];
   currentTime: number;
   timeSignature: [number, number];
+  songKey?: string;
   loopEnabled?: boolean;
   loopStart?: number;
   loopEnd?: number;

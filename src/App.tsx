@@ -50,6 +50,7 @@ const songList = [
   { id: 'scarborough-fair', name: 'Scarborough Fair', filename: 'scarborough-fair.json' },
   { id: 'when-the-swallows', name: 'When The Swallows', filename: 'when-the-swallows.json' },
   { id: 'when-the-swallows-detailed', name: 'When The Swallows (Detailed)', filename: 'when-the-swallows-detailed.json' },
+  { id: 'test-song', name: 'Staff View Test Song', filename: 'test-song.json' },
 ];
 
 function App() {

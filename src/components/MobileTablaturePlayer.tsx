@@ -467,6 +467,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
           notes={processedSong.notes}
           currentTime={currentTime}
           timeSignature={processedSong.timeSignature}
+          songKey={processedSong.key}
           loopEnabled={loopEnabled}
           loopStart={loopStart}
           loopEnd={loopEnd}
