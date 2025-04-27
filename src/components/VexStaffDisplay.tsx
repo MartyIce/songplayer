@@ -306,7 +306,6 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       }) as any;
   
       // Add accidentals separately after creating the note
-      let hasAccidentals = false;
       originalNotes.forEach((note, i) => {
         const noteName = note.slice(0, -1);
         
@@ -315,12 +314,10 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
           // Add sharp accidental with proper spacing
           const accidental = new Accidental('#');
           staveNote.addModifier(accidental, i);
-          hasAccidentals = true;
         } else if (noteName.includes('b') && noteName !== 'B') {
           // Add flat accidental with proper spacing
           const accidental = new Accidental('b');
           staveNote.addModifier(accidental, i);
-          hasAccidentals = true;
         }
       });
   
@@ -374,6 +371,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   const [scrollStartX, setScrollStartX] = useState(0);
   const [manualScrollMode, setManualScrollMode] = useState(false);
   const [scaleDivisor, setScaleDivisor] = useState(scale * 2.3); // using temporary slider, this seems a good value
+  const [mousePosition, setMousePosition] = useState<{x: number, y: number, scaledX: number} | null>(null);
   const { zoomLevel } = useZoom();
   
   // Apply zoom to scaling factors
@@ -493,12 +491,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Create VexFlow notes
       const vexNotes = createVexflowNotes(groupedNotes);
       
-      // Verify vexNotes were created correctly
-      if (vexNotes.length > 0) {
-        console.log(`Created ${vexNotes.length} VexFlow notes`);
-        console.log(`First 3 notes:`, vexNotes.slice(0, 3));
-      }
-      
       // Create a single voice for all notes
       const voice = new Voice({
         numBeats: currentBeatsPerMeasure * totalMeasures,
@@ -513,9 +505,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       formatter.joinVoices([voice])
               .formatToStave([voice], stave);
       
-      // Check formatter results
-      console.log("Formatter applied:", formatter);
-      
       stave.setBegBarType(Barline.type.SINGLE);
       stave.setEndBarType(Barline.type.END);
       
@@ -526,15 +515,17 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Get the tickables from the voice (these are the notes after formatting)
       const tickables = voice.getTickables();
       
-      // Get info from first few tickables for debugging
-      tickables.slice(0, 3).forEach((tickable, i) => {
-        // Access properties safely using cast
+      // Log the positions of the first 10 tickables for debugging
+      console.log(`Current scale: ${scale}, Zoom level: ${zoomLevel}`);
+      tickables.slice(0, 10).forEach((tickable, i) => {
         const tickableAny = tickable as any;
         if (tickableAny.tickContext) {
-          console.log(`Tickable ${i}: x=${tickableAny.tickContext.getX()}, width=${tickable.width}`);
+          const xPos = tickableAny.tickContext.getX();
+          const width = tickable.width || 0;
+          console.log(`Tickable ${i}: x=${xPos}, width=${width}, end=${xPos + width}`);
         }
       });
-
+      
       // Map each note to its measure
       const notesByMeasure: { [key: number]: number[] } = {};
       
@@ -581,24 +572,25 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         // If we have a valid note index for this measure
         if (endNoteIndex !== undefined && endNoteIndex < tickables.length - 1) {
           // Get the last note of the current measure and the first note of the next measure
-          const currentTickable = tickables[endNoteIndex + 1];
-          const nextTickable = tickables[endNoteIndex + 2];
+          const currentTickable = tickables[endNoteIndex];
+          const nextTickable = tickables[endNoteIndex + 1];
           
           // Access X positions using cast
           const currentTickableAny = currentTickable as any;
           const nextTickableAny = nextTickable as any;
           
+          console.log("stave.getNoteStartX(): ", stave.getNoteStartX())
           let currentX = 0;
           let nextX = 0;
           
           // Get X position of current tickable
           if (currentTickableAny.tickContext) {
-            currentX = currentTickableAny.tickContext.getX();
+            currentX = stave.getNoteStartX() + currentTickableAny.tickContext.getX() + currentTickableAny.tickContext.width;
           }
           
           // Get X position of next tickable (if available)
           if (nextTickableAny && nextTickableAny.tickContext) {
-            nextX = nextTickableAny.tickContext.getX();
+            nextX = stave.getNoteStartX() + nextTickableAny.tickContext.getX();
           } else {
             // If there's no next tickable, estimate a position
             // Use the current tickable width as a fallback
@@ -621,8 +613,12 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         
         // Draw the barline
         context.beginPath();
-        context.moveTo(position, stave.getYForLine(0));
-        context.lineTo(position, stave.getYForLine(4));
+        // Apply scaling factor to position to match the note positions
+        // Notes are positioned by VexFlow formatter after context scaling is applied
+        // We need to take this into account when drawing custom elements
+        const scaledPosition = position * scale;
+        context.moveTo(scaledPosition, stave.getYForLine(0));
+        context.lineTo(scaledPosition, stave.getYForLine(4));
         context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
         context.setLineWidth(1.5);
         context.stroke();
@@ -633,8 +629,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           const svgNS = "http://www.w3.org/2000/svg";
           const yOffset = stave.getYForLine(0) - 15;
           
-          // Position text slightly after barline
-          const textX = position + 8;
+          // Position text slightly after barline, accounting for scale
+          const textX = (position + 8) * scale;
           
           // Add measure number
           const text = document.createElementNS(svgNS, "text");
@@ -677,7 +673,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         
         // Add first measure number
         const text = document.createElementNS(svgNS, "text");
-        text.setAttributeNS(null, "x", textX.toString());
+        text.setAttributeNS(null, "x", (textX * scale).toString());
         text.setAttributeNS(null, "y", yOffset.toString());
         text.setAttributeNS(null, "font-family", "Arial");
         text.setAttributeNS(null, "font-size", "10px");
@@ -691,7 +687,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         const firstChord = chords.find(c => c.measure === 1);
         if (firstChord) {
           const chordText = document.createElementNS(svgNS, "text");
-          chordText.setAttributeNS(null, "x", textX.toString());
+          chordText.setAttributeNS(null, "x", (textX * scale).toString());
           chordText.setAttributeNS(null, "y", (yOffset - 15).toString());
           chordText.setAttributeNS(null, "font-family", "Arial");
           chordText.setAttributeNS(null, "font-size", "12px");
@@ -898,6 +894,23 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     setManualScrollMode(!manualScrollMode);
   }, [manualScrollMode]);
 
+  // Mouse position tracking
+  const handleMouseMoveForCoordinates = useCallback((e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    
+    // Get container's bounding rect
+    const rect = scrollContainerRef.current.getBoundingClientRect();
+    
+    // Calculate relative position within container
+    const x = e.clientX - rect.left + scrollContainerRef.current.scrollLeft;
+    const y = e.clientY - rect.top;
+    
+    // Calculate scaled X position based on current scale
+    const scaledX = x / scale;
+    
+    setMousePosition({ x, y, scaledX });
+  }, [scale]);
+
   // Update handleResumeAutoScroll to use the new function
   const handleResumeAutoScroll = useCallback(() => {
     setManualScrollMode(false);
@@ -928,33 +941,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
   return (
     <div className="vex-staff-display" data-night-mode={nightMode}>
 
-
-      {/* ScaleDivisor tester */}
-      {/* <div style={{ 
-        position: 'absolute', 
-        top: '5px', 
-        left: '50%', 
-        transform: 'translateX(-50%)',
-        zIndex: 1000,
-        background: 'rgba(255, 255, 255, 0.9)',
-        padding: '5px',
-        borderRadius: '4px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px'
-      }}>
-        <span style={{ fontSize: '12px' }}>Scale Divisor: {scaleDivisor.toFixed(2)}</span>
-        <input
-          type="range"
-          min="0.1"
-          max="2"
-          step="0.05"
-          value={scaleDivisor}
-          onChange={(e) => setScaleDivisor(parseFloat(e.target.value))}
-          style={{ width: '100px' }}
-        />
-      </div> */}
-
       {manualScrollMode && (
         <button 
           className="staff-resume-button visible"
@@ -963,13 +949,40 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           Resume Auto-Scroll
         </button>
       )}
+      
+      {/* Mouse coordinate display */}
+      {mousePosition && (
+        <div className="coordinates-display" style={{
+          position: 'absolute',
+          top: '5px',
+          right: '10px',
+          background: nightMode ? 'rgba(40, 40, 40, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          color: nightMode ? '#fff' : '#000',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 100,
+          pointerEvents: 'none'
+        }}>
+          x: {Math.round(mousePosition.x)}, 
+          y: {Math.round(mousePosition.y)}, 
+          scaledX: {Math.round(mousePosition.scaledX)}
+        </div>
+      )}
+      
       <div 
         className={`staff-scroll-container ${manualScrollMode ? 'manual-scroll' : ''}`} 
         ref={scrollContainerRef}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
+        onMouseMove={(e) => {
+          handleMouseMove(e);
+          handleMouseMoveForCoordinates(e);
+        }}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={() => {
+          handleMouseUp();
+          setMousePosition(null);
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
