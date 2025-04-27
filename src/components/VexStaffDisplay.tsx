@@ -56,7 +56,7 @@ const BASE_SCROLL_SCALE = 60; // Base scaling factor to synchronize with tab vie
 const VISIBLE_WIDTH = 1000; // Visible width of the score display
 const STAVE_LEFT_PADDING = 20; // Padding to the left of the stave
 const CLEF_WIDTH = 90; // Width needed for clef and time signature
-const BASE_MEASURE_WIDTH = 240; // Base width per measure (adjusted for better spacing and aligned with tablature)
+const BASE_MEASURE_WIDTH = 300; // Increased width per measure to ensure proper spacing
 
 /**
  * Converts string/fret to pitch note
@@ -134,11 +134,6 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
   
   // First pass: Group regular notes and collect rests
   visibleNotes.forEach((note, index) => {
-    // Debug the first few notes
-    if (index < 3) {
-      console.log(`Processing note ${index}:`, note);
-    }
-
     if ('rest' in note) {
       // Group rests by time, using exact time value to maintain measure position
       const timeKey = note.time.toString();
@@ -152,14 +147,8 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
     let pitch: string = '';
     if ('note' in note) {
       pitch = note.note;
-      if (index < 3) {
-        console.log(`Note ${index} has note property:`, pitch);
-      }
     } else if ('string' in note) {
       pitch = getPitchFromTab(note);
-      if (index < 3) {
-        console.log(`Note ${index} is from tab:`, pitch);
-      }
     } else {
       return;
     }
@@ -187,10 +176,6 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
         measure: getMeasureNumber(note.time, beatsPerMeasure)
       };
       groupedNotes.push(newGroup);
-      
-      if (index < 3) {
-        console.log(`Note ${index} created new group:`, newGroup);
-      }
     }
   });
   
@@ -225,11 +210,6 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
     return 0;
   });
   
-  // Debug first few grouped notes after sorting
-  for (let i = 0; i < Math.min(3, groupedNotes.length); i++) {
-    console.log(`Grouped note ${i} after sorting:`, groupedNotes[i]);
-  }
-  
   // Sort notes within each non-rest group by pitch
   groupedNotes.forEach((group, groupIndex) => {
     if (!group.isRest && group.notes) {
@@ -261,11 +241,6 @@ function groupNotesByTime(visibleNotes: Note[], currentTime: number, timeSignatu
         
         return bValue - aValue;
       });
-      
-      // Debug first few groups after pitch sorting
-      if (groupIndex < 3) {
-        console.log(`Group ${groupIndex} after pitch sorting:`, group.notes);
-      }
     }
   });
   
@@ -349,13 +324,6 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
         }
       });
   
-      // For notes with accidentals or the first few notes, add extra space
-      // to ensure proper visibility
-      if (hasAccidentals || groupIndex < 4) {
-        // staveNote.setXShift(-12);
-        // staveNote.modifiers[0].setXShift(-12);
-      }
-  
       // Add dot for dotted notes
       if ([3.0, 1.5, 0.75].includes(group.duration)) {
         Dot.buildAndAttach([staveNote]);
@@ -373,32 +341,6 @@ function createVexflowNotes(groupedNotes: GroupedNote[]): StaveNote[] {
       });
     }
   });
-}
-
-/**
- * Custom function to manually position notes according to their time
- */
-function positionNotes(groupedNotes: GroupedNote[], 
-                      voice: Voice, 
-                      stave: any,
-                      scrollScale: number): void {
-  // Get all tickables in the voice
-  const tickables = voice.getTickables();
-  
-  // // Set position for each note based on its time
-  // groupedNotes.forEach((group, index) => {
-  //   if (index < tickables.length) {
-  //     const tickable = tickables[index];
-  //     // Set the x position based on the same scale factor as grid lines
-  //     const xPos = (group.time * scrollScale);
-  //     tickable.setXShift(xPos - tickable.getX());
-      
-  //     // For first few notes (C4, C#4) - make sure they're clearly visible
-  //     if (index < 2) {
-  //       console.log(`Positioning note ${index}: time=${group.time}, x=${tickable.getX()}, shift=${xPos - tickable.getX()}`);
-  //     }
-  //   }
-  // });
 }
 
 /**
@@ -443,9 +385,20 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
     // Calculate position based on time and scroll scale to match tablature
     const clefWidth = CLEF_WIDTH; // Width for clef and time signature
     
-    // Position is based on time * scale factor, plus clef width offset
-    return clefWidth + (time * SCROLL_SCALE);
-  }, [SCROLL_SCALE]);
+    // For measure boundaries, calculate based on measure number to ensure even spacing
+    const beatsPerMeasure = timeSignature[0];
+    const isMeasureBoundary = time > 0 && Math.abs(time % beatsPerMeasure) < 0.001;
+    
+    if (isMeasureBoundary) {
+      // For measure boundaries, use fixed width calculation
+      const measureNumber = Math.floor(time / beatsPerMeasure);
+      return Math.round(clefWidth + (measureNumber * MEASURE_WIDTH));
+    } else {
+      // For notes, use the normal time-based calculation
+      // Ensure consistent positioning across the staff
+      return Math.round(clefWidth + (time * SCROLL_SCALE));
+    }
+  }, [SCROLL_SCALE, MEASURE_WIDTH, timeSignature]);
 
   // Calculate target scroll position for centering
   const calculateTargetScrollLeft = useCallback((containerWidth: number): number => {
@@ -494,8 +447,8 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       Math.max(...notes.map(note => note.time + note.duration)) : 
       0;
     
-    const beatsPerMeasure = timeSignature[0];
-    const totalMeasures = Math.ceil(lastNoteTime / beatsPerMeasure);
+    const currentBeatsPerMeasure = timeSignature[0];
+    const totalMeasures = Math.ceil(lastNoteTime / currentBeatsPerMeasure);
     
     const calculatedWidth = Math.max(VISIBLE_WIDTH, totalMeasures * MEASURE_WIDTH);
     
@@ -534,13 +487,6 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
         context.setFillStyle('#FFFFFF');
       }
       
-      // If test-song.json, log the first few notes
-      if (notes.length > 0 && notes[0]?.time === 0 && notes[1]?.time === 1.0 && 
-          'note' in notes[0] && notes[0].note === 'C4' &&
-          'note' in notes[1] && notes[1].note === 'C#4') {
-        console.log("Found test-song.json pattern", notes.slice(0, 3));
-      }
-      
       // Group notes by time to handle chords
       const groupedNotes = groupNotesByTime(notes, currentTime, timeSignature);
       
@@ -555,7 +501,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       // Create a single voice for all notes
       const voice = new Voice({
-        numBeats: beatsPerMeasure * totalMeasures,
+        numBeats: currentBeatsPerMeasure * totalMeasures,
         beatValue: timeSignature[1]
       }).setStrict(false);
       
@@ -564,27 +510,11 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Format and draw
       const formatter = new Formatter();
       
-      // Check if we have the test song pattern with C4 and C#4
-      const hasTestSongPattern = notes.length > 1 && 
-        'note' in notes[0] && notes[0].note === 'C4' &&
-        'note' in notes[1] && notes[1].note === 'C#4';
-      
-      if (hasTestSongPattern && vexNotes.length >= 2) {
-        console.log("Special handling for test song notes");
-        
-        // Apply extra spacing for C4 and C#4 by using setXShift
-        // if (vexNotes[0]) (vexNotes[0] as any).setXShift(15);
-        // if (vexNotes[1]) (vexNotes[1] as any).setXShift(15);
-      }
-      
       formatter.joinVoices([voice])
               .formatToStave([voice], stave);
       
       // Check formatter results
       console.log("Formatter applied:", formatter);
-      
-      // Apply custom positioning based on note timing
-      positionNotes(groupedNotes, voice, stave, SCROLL_SCALE);
       
       stave.setBegBarType(Barline.type.SINGLE);
       stave.setEndBarType(Barline.type.END);
@@ -593,38 +523,111 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       stave.draw();
       voice.draw(context, stave);
       
-      // Draw measure barlines
-      // Calculate the first measure line position
-      let currentMeasureTime = beatsPerMeasure;
+      // Get the tickables from the voice (these are the notes after formatting)
+      const tickables = voice.getTickables();
       
-      // Draw measure barlines
-      while (currentMeasureTime <= lastNoteTime) {
-        // Calculate position based on time and SCROLL_SCALE to align with tablature grid lines
-        // Position is determined by the time of the measure boundary multiplied by SCROLL_SCALE
-        // plus the clef width offset
-        const measurePosition = getXPositionForTime(currentMeasureTime);
-        
-        // Only draw the line if it's after the clef and time signature
-        if (measurePosition > CLEF_WIDTH) {
-          // Draw barline
-          context.beginPath();
-          context.moveTo(measurePosition, stave.getYForLine(0));
-          context.lineTo(measurePosition, stave.getYForLine(4));
-          context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
-          context.setLineWidth(1);
-          context.stroke();
+      // Get info from first few tickables for debugging
+      tickables.slice(0, 3).forEach((tickable, i) => {
+        // Access properties safely using cast
+        const tickableAny = tickable as any;
+        if (tickableAny.tickContext) {
+          console.log(`Tickable ${i}: x=${tickableAny.tickContext.getX()}, width=${tickable.width}`);
+        }
+      });
 
-          // Draw measure number
-          const measureNumber = Math.floor(currentMeasureTime / beatsPerMeasure);
-          const yOffset = stave.getYForLine(0) - 15; // Position above the staff
+      // Map each note to its measure
+      const notesByMeasure: { [key: number]: number[] } = {};
+      
+      // First, collect which notes are in which measures
+      notes.forEach((note, index) => {
+        let measureNum = 0;
+        if ('measure' in note && typeof note.measure === 'number') {
+          measureNum = note.measure;
+        } else {
+          measureNum = Math.floor(note.time / timeSignature[0]) + 1;
+        }
+        
+        if (!notesByMeasure[measureNum]) {
+          notesByMeasure[measureNum] = [];
+        }
+        notesByMeasure[measureNum].push(index);
+      });
+      
+      console.log("Notes by measure:", notesByMeasure);
+      
+      // Find the last note in each measure
+      const measureEndNotes: { [key: number]: number } = {};
+      
+      Object.keys(notesByMeasure).forEach(measureKey => {
+        const measureNum = parseInt(measureKey);
+        const noteIndices = notesByMeasure[measureNum];
+        
+        if (noteIndices && noteIndices.length > 0) {
+          // Sort indices and get the last one
+          const lastNoteIndex = Math.max(...noteIndices);
+          measureEndNotes[measureNum] = lastNoteIndex;
+        }
+      });
+      
+      console.log("Last note indices by measure:", measureEndNotes);
+      
+      // Get X positions for barlines from tickables
+      const barlinePositions: { [key: number]: number } = {};
+      
+      // Skip measure 1 since it starts after clef (no barline needed at the beginning)
+      for (let measure = 1; measure < Object.keys(notesByMeasure).length; measure++) {
+        const endNoteIndex = measureEndNotes[measure];
+        
+        // If we have a valid note index for this measure
+        if (endNoteIndex !== undefined && endNoteIndex < tickables.length) {
+          // Get the right edge of the last note in the measure
+          const tickable = tickables[endNoteIndex];
+          // Access properties safely using cast
+          const tickableAny = tickable as any;
+          let noteX = 0;
+          let noteWidth = 0;
           
-          // Create SVG text element for measure number
+          if (tickableAny.tickContext) {
+            noteX = tickableAny.tickContext.getX();
+            noteWidth = tickable.width || 0;
+          }
+          
+          // Calculate optimal barline position
+          // Position it slightly after the last note, ensuring consistent
+          // spacing between notes and barlines
+          const SPACING_AFTER_NOTE = 20; // pixels after the last note
+          const barlineX = noteX + noteWidth + SPACING_AFTER_NOTE;
+          
+          barlinePositions[measure] = barlineX; // Barline marks start of next measure
+          
+          console.log(`Barline for measure ${measure} positioned at ${barlineX} (after note ${endNoteIndex}, x=${noteX}, width=${noteWidth})`);
+        }
+      }
+      
+      // Draw barlines at the calculated positions
+      Object.keys(barlinePositions).forEach(measureKey => {
+        const measureNum = parseInt(measureKey);
+        const position = barlinePositions[measureNum];
+        
+        // Draw the barline
+        context.beginPath();
+        context.moveTo(position, stave.getYForLine(0));
+        context.lineTo(position, stave.getYForLine(4));
+        context.setStrokeStyle(nightMode ? '#FFFFFF' : '#000000');
+        context.setLineWidth(1.5);
+        context.stroke();
+        
+        // Add measure number and chord
+        const svg = containerRef.current?.querySelector('svg');
+        if (svg) {
           const svgNS = "http://www.w3.org/2000/svg";
+          const yOffset = stave.getYForLine(0) - 15;
+          
+          // Position text slightly after barline
+          const textX = position + 8;
+          
+          // Add measure number
           const text = document.createElementNS(svgNS, "text");
-          // Position at the start of the measure, accounting for clef width
-          const textX = measureNumber === 1 ? 
-            Math.max(CLEF_WIDTH + 5, measurePosition - MEASURE_WIDTH + 5) : // First measure after clef
-            (getXPositionForTime(currentMeasureTime - beatsPerMeasure) + 5); // Other measures start at their barline
           text.setAttributeNS(null, "x", textX.toString());
           text.setAttributeNS(null, "y", yOffset.toString());
           text.setAttributeNS(null, "font-family", "Arial");
@@ -632,32 +635,63 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           text.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.6)');
           text.setAttributeNS(null, "data-measure-number", "true");
           text.setAttributeNS(null, "text-anchor", "start");
-          text.textContent = measureNumber.toString();
+          text.textContent = measureNum.toString();
+          svg.appendChild(text);
           
-          // Add text to SVG
-          const svg = containerRef.current?.querySelector('svg');
-          if (svg) {
-            svg.appendChild(text);
-          }
-
-          // Draw chord if exists for this measure
-          const chord = chords.find(c => c.measure === measureNumber);
-          if (chord && svg) {
+          // Add chord for this measure if it exists
+          const chord = chords.find(c => c.measure === measureNum);
+          if (chord) {
             const chordText = document.createElementNS(svgNS, "text");
             chordText.setAttributeNS(null, "x", textX.toString());
-            chordText.setAttributeNS(null, "y", (yOffset - 15).toString()); // Position above measure number
+            chordText.setAttributeNS(null, "y", (yOffset - 15).toString());
             chordText.setAttributeNS(null, "font-family", "Arial");
             chordText.setAttributeNS(null, "font-size", "12px");
             chordText.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : '#0066cc');
+            chordText.setAttributeNS(null, "font-weight", "bold");
             chordText.setAttributeNS(null, "data-chord", "true");
             chordText.setAttributeNS(null, "text-anchor", "start");
             chordText.textContent = chord.chord;
             svg.appendChild(chordText);
           }
         }
+      });
+      
+      // Add the first measure number and chord at the beginning
+      const svg = containerRef.current?.querySelector('svg');
+      if (svg) {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const yOffset = stave.getYForLine(0) - 15;
         
-        // Move to next measure boundary based on time signature
-        currentMeasureTime += beatsPerMeasure;
+        // Position just after clef and time signature
+        const textX = CLEF_WIDTH + 8;
+        
+        // Add first measure number
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttributeNS(null, "x", textX.toString());
+        text.setAttributeNS(null, "y", yOffset.toString());
+        text.setAttributeNS(null, "font-family", "Arial");
+        text.setAttributeNS(null, "font-size", "10px");
+        text.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.6)');
+        text.setAttributeNS(null, "data-measure-number", "true");
+        text.setAttributeNS(null, "text-anchor", "start");
+        text.textContent = "1";
+        svg.appendChild(text);
+        
+        // Add first chord if it exists
+        const firstChord = chords.find(c => c.measure === 1);
+        if (firstChord) {
+          const chordText = document.createElementNS(svgNS, "text");
+          chordText.setAttributeNS(null, "x", textX.toString());
+          chordText.setAttributeNS(null, "y", (yOffset - 15).toString());
+          chordText.setAttributeNS(null, "font-family", "Arial");
+          chordText.setAttributeNS(null, "font-size", "12px");
+          chordText.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : '#0066cc');
+          chordText.setAttributeNS(null, "font-weight", "bold");
+          chordText.setAttributeNS(null, "data-chord", "true");
+          chordText.setAttributeNS(null, "text-anchor", "start");
+          chordText.textContent = firstChord.chord;
+          svg.appendChild(chordText);
+        }
       }
       
       // Color active notes
