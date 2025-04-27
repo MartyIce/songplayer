@@ -573,34 +573,44 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       
       // Get X positions for barlines from tickables
       const barlinePositions: { [key: number]: number } = {};
-      
+
       // Skip measure 1 since it starts after clef (no barline needed at the beginning)
       for (let measure = 1; measure < Object.keys(notesByMeasure).length; measure++) {
         const endNoteIndex = measureEndNotes[measure];
         
         // If we have a valid note index for this measure
-        if (endNoteIndex !== undefined && endNoteIndex < tickables.length) {
-          // Get the right edge of the last note in the measure
-          const tickable = tickables[endNoteIndex];
-          // Access properties safely using cast
-          const tickableAny = tickable as any;
-          let noteX = 0;
-          let noteWidth = 0;
+        if (endNoteIndex !== undefined && endNoteIndex < tickables.length - 1) {
+          // Get the last note of the current measure and the first note of the next measure
+          const currentTickable = tickables[endNoteIndex + 1];
+          const nextTickable = tickables[endNoteIndex + 2];
           
-          if (tickableAny.tickContext) {
-            noteX = tickableAny.tickContext.getX();
-            noteWidth = tickable.width || 0;
+          // Access X positions using cast
+          const currentTickableAny = currentTickable as any;
+          const nextTickableAny = nextTickable as any;
+          
+          let currentX = 0;
+          let nextX = 0;
+          
+          // Get X position of current tickable
+          if (currentTickableAny.tickContext) {
+            currentX = currentTickableAny.tickContext.getX();
           }
           
-          // Calculate optimal barline position
-          // Position it slightly after the last note, ensuring consistent
-          // spacing between notes and barlines
-          const SPACING_AFTER_NOTE = 20; // pixels after the last note
-          const barlineX = noteX + noteWidth + SPACING_AFTER_NOTE;
+          // Get X position of next tickable (if available)
+          if (nextTickableAny && nextTickableAny.tickContext) {
+            nextX = nextTickableAny.tickContext.getX();
+          } else {
+            // If there's no next tickable, estimate a position
+            // Use the current tickable width as a fallback
+            nextX = currentX + (currentTickable.width || 0) + 40;
+          }
           
-          barlinePositions[measure] = barlineX; // Barline marks start of next measure
+          // Set barline position to halfway between the two tickables
+          const barlineX = currentX + ((nextX - currentX) / 2);
           
-          console.log(`Barline for measure ${measure} positioned at ${barlineX} (after note ${endNoteIndex}, x=${noteX}, width=${noteWidth})`);
+          barlinePositions[measure] = barlineX; // Barline marks end of current measure
+          
+          console.log(`Barline for measure ${measure} positioned at ${barlineX} (between note ${endNoteIndex + 1} at ${currentX} and next note at ${nextX})`);
         }
       }
       
@@ -752,7 +762,7 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
       // Remove measure number text elements using stored ref
       const svg = currentContainer?.querySelector('svg');
       if (svg) {
-        const texts = svg.querySelectorAll('text[data-measure-number], text[data-chord]');
+        const texts = svg.querySelectorAll('text[data-measure-number], text[data-chord], text[data-index-number]');
         texts.forEach(text => text.remove());
       }
     };
