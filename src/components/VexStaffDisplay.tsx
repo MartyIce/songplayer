@@ -641,11 +641,11 @@ const VexStaffDisplay: React.FC<VexStaffDisplayProps> = ({
           text.setAttributeNS(null, "fill", nightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.6)');
           text.setAttributeNS(null, "data-measure-number", "true");
           text.setAttributeNS(null, "text-anchor", "start");
-          text.textContent = measureNum.toString();
+          text.textContent = (measureNum + 1).toString();
           svg.appendChild(text);
           
           // Add chord for this measure if it exists
-          const chord = chords.find(c => c.measure === measureNum);
+          const chord = chords.find(c => c.measure === (measureNum + 1));
           if (chord) {
             const chordText = document.createElementNS(svgNS, "text");
             chordText.setAttributeNS(null, "x", textX.toString());
