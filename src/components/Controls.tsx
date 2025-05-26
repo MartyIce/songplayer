@@ -35,6 +35,7 @@ interface ControlsProps {
   isLoading: boolean;
   nightMode: boolean;
   onNightModeChange: (enabled: boolean) => void;
+  onMixupSong?: () => void; // Optional mixup function
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -67,6 +68,7 @@ const Controls: React.FC<ControlsProps> = ({
   isLoading,
   nightMode,
   onNightModeChange,
+  onMixupSong,
 }) => {
   // Add state for temporary input values
   const [tempTimeStart, setTempTimeStart] = useState<string>('');
@@ -280,6 +282,16 @@ const Controls: React.FC<ControlsProps> = ({
               ))}
             </select>
             {isLoading && <span className="loading-indicator">Loading...</span>}
+            
+            {onMixupSong && currentSongId.startsWith('generated-') && (
+              <button 
+                className="mixup-button"
+                onClick={onMixupSong}
+                title="Mix up the notes in this generated song"
+              >
+                🎲 Mix Up Notes
+              </button>
+            )}
           </div>
         </div>
       </div>

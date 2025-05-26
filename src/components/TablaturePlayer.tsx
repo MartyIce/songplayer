@@ -21,6 +21,7 @@ import { useTransportControl } from '../hooks/useTransportControl';
 import { useSongSelection } from '../hooks/useSongSelection';
 import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
 import { SongListItem } from '../utils/songPopulator';
+import { SongPopulator } from '../utils/songPopulator';
 
 interface TablaturePlayerProps {
   song: SongData;
@@ -28,6 +29,7 @@ interface TablaturePlayerProps {
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;
+  onSongUpdate?: (newSong: SongData) => void; // Callback to update the song in parent
 }
 
 const TablaturePlayer: React.FC<TablaturePlayerProps> = ({ 
@@ -35,7 +37,8 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   songList,
   currentSongId,
   onSongChange,
-  isLoading
+  isLoading,
+  onSongUpdate
 }) => {
   // Save current song ID whenever it changes
   useSongSelection(currentSongId);
@@ -43,6 +46,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isResetAnimating, setIsResetAnimating] = useState(false);
+  const [shouldAutoRestart, setShouldAutoRestart] = useState(false);
 
   // Process song data using the hook
   const {
@@ -180,6 +184,21 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     const [beatsPerBar] = song.timeSignature || [3, 4];
     Tone.Transport.timeSignature = beatsPerBar;
   }, [song, bpm]);
+
+  // Auto-restart after song mixup
+  useEffect(() => {
+    if (shouldAutoRestart && processedSong && !isPlaying) {
+      setShouldAutoRestart(false);
+      // Reset to beginning
+      Tone.Transport.stop();
+      Tone.Transport.seconds = 0;
+      setCurrentTime(0);
+      // Start playing the new song
+      setTimeout(() => {
+        handlePlay();
+      }, 100);
+    }
+  }, [shouldAutoRestart, processedSong, isPlaying, handlePlay]);
   
   // Update handleMuteChange to use clearScheduledNotes
   const handleMuteChangeWithScheduling = useCallback((muted: boolean) => {
@@ -287,6 +306,28 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleChordsVolumeChange]);
 
+  // Handle mixup song
+  const handleMixupSong = useCallback(() => {
+    if (currentSongId.startsWith('generated-') && onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Mix up the current song
+      const mixedSong = SongPopulator.mixupSong(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(mixedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop]);
+
   return (
     <div className="tablature-player" ref={containerRef}>
       <Controls
@@ -319,6 +360,7 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         isLoading={isLoading}
         nightMode={nightMode}
         onNightModeChange={handleNightModeChange}
+        onMixupSong={handleMixupSong}
       />
       
       <VexStaffDisplay

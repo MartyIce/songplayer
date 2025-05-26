@@ -56,6 +56,14 @@ export class SongPopulator {
   }
 
   /**
+   * Mix up the notes in a generated song
+   */
+  public static mixupSong(songData: SongData): SongData {
+    const generator = new ScaleWithChordsGenerator();
+    return generator.mixup(songData);
+  }
+
+  /**
    * Combine existing songs with generated songs
    */
   public static populateSongList(existingSongs: SongListItem[]): SongListItem[] {

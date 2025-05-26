@@ -18,6 +18,7 @@ import * as Tone from 'tone';
 import { useSongSelection } from '../hooks/useSongSelection';
 import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
 import { SongListItem } from '../utils/songPopulator';
+import { SongPopulator } from '../utils/songPopulator';
 
 // Helper function to format time as MM:SS
 const formatTime = (time: number) => {
@@ -32,6 +33,7 @@ interface MobileTablaturePlayerProps {
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;
+  onSongUpdate?: (newSong: SongData) => void; // Callback to update the song in parent
 }
 
 const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
@@ -39,7 +41,8 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   songList,
   currentSongId,
   onSongChange,
-  isLoading
+  isLoading,
+  onSongUpdate
 }) => {
   // Save current song ID whenever it changes
   useSongSelection(currentSongId);
@@ -49,6 +52,7 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
   const [isResetAnimating, setIsResetAnimating] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [tabViewHeight, setTabViewHeight] = useState<number>(0);
+  const [shouldAutoRestart, setShouldAutoRestart] = useState(false);
   const tabViewRef = useRef<HTMLDivElement>(null);
 
   // Process song data using the hook
@@ -236,6 +240,43 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
       Tone.Transport.start();
     }
   }, [isPlaying, currentTime, scheduleNotes, processedSong, songDuration, handleBpmChange]);
+
+  // Handle mixup song
+  const handleMixupSong = useCallback(() => {
+    if (currentSongId.startsWith('generated-') && onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Mix up the current song
+      const mixedSong = SongPopulator.mixupSong(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(mixedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop]);
+
+  // Auto-restart after song mixup
+  useEffect(() => {
+    if (shouldAutoRestart && processedSong && !isPlaying) {
+      setShouldAutoRestart(false);
+      // Reset to beginning
+      Tone.Transport.stop();
+      Tone.Transport.seconds = 0;
+      setCurrentTime(0);
+      // Start playing the new song
+      setTimeout(() => {
+        handlePlay();
+      }, 100);
+    }
+  }, [shouldAutoRestart, processedSong, isPlaying, handlePlay]);
 
   // Measure tab view height for responsive string spacing
   useEffect(() => {
@@ -458,6 +499,15 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                 ))}
               </select>
               {isLoading && <div style={{ color: '#fff' }}>Loading...</div>}
+              
+              {onSongUpdate && currentSongId.startsWith('generated-') && (
+                <button 
+                  className="mobile-mixup-button"
+                  onClick={handleMixupSong}
+                >
+                  🎲 Mix Up Notes
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
 import MobileTablaturePlayer from './components/MobileTablaturePlayer';
@@ -56,14 +56,15 @@ const baseSongList: SongListItem[] = [
 
 function App() {
   const [currentSong, setCurrentSong] = useState<SongData | null>(null);
+  const [currentSongId, setCurrentSongId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isMobile, isLandscape } = useMobileDetection();
 
   // Generate the complete song list with generated songs
-  const songList = useMemo(() => {
+  const [songList, setSongList] = useState<SongListItem[]>(() => {
     return SongPopulator.populateSongList(baseSongList);
-  }, []);
+  });
 
   // Load initial song
   useEffect(() => {
@@ -71,6 +72,7 @@ function App() {
     const savedSongId = getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id);
     const songToLoad = songList.find(song => song.id === savedSongId) || songList[0];
     
+    setCurrentSongId(songToLoad.id);
     // Make sure the current song ID is saved correctly
     saveToStorage(STORAGE_KEYS.CURRENT_SONG, songToLoad.id);
     
@@ -118,13 +120,41 @@ function App() {
     }
   };
 
-  const handleSongChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedSong = songList.find(song => song.id === e.target.value);
-    if (selectedSong) {
-      loadSong(selectedSong);
-      saveToStorage(STORAGE_KEYS.CURRENT_SONG, selectedSong.id);
+  // Handle song change
+  const handleSongChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    setCurrentSongId(selectedId);
+    setCurrentSong(null);
+    setIsLoading(true);
+    
+    // Save the selected song ID
+    saveToStorage(STORAGE_KEYS.CURRENT_SONG, selectedId);
+
+    // Find the song in the combined list
+    const selectedSong = songList.find(song => song.id === selectedId);
+    
+    if (!selectedSong) {
+      console.error('Song not found:', selectedId);
+      setIsLoading(false);
+      return;
     }
-  };
+
+    loadSong(selectedSong);
+  }, [songList]);
+
+  // Handle song update (for mixup functionality)
+  const handleSongUpdate = useCallback((newSong: SongData) => {
+    setCurrentSong(newSong);
+    
+    // Update the song in the songList
+    setSongList(prevSongs => 
+      prevSongs.map((songItem: SongListItem) => 
+        songItem.id === currentSongId 
+          ? { ...songItem, data: newSong }
+          : songItem
+      )
+    );
+  }, [currentSongId]);
 
   if (error) {
     return <div className="error-message">Error: {error}</div>;
@@ -140,9 +170,10 @@ function App() {
               <MobileTablaturePlayer 
                 song={currentSong} 
                 songList={songList}
-                currentSongId={getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id)}
+                currentSongId={currentSongId}
                 onSongChange={handleSongChange}
                 isLoading={isLoading}
+                onSongUpdate={handleSongUpdate}
               />
             )}
           </main>
@@ -163,9 +194,10 @@ function App() {
             <TablaturePlayer 
               song={currentSong} 
               songList={songList}
-              currentSongId={getFromStorage(STORAGE_KEYS.CURRENT_SONG, songList[0].id)}
+              currentSongId={currentSongId}
               onSongChange={handleSongChange}
               isLoading={isLoading}
+              onSongUpdate={handleSongUpdate}
             />
           )}
         </main>

@@ -392,4 +392,29 @@
   .mobile-tab-view {
     min-height: 150px;
   }
+}
+
+.mobile-mixup-button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #61dafb, #21a9c7);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.mobile-mixup-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4fa8c5, #1a8aa3);
+  transform: translateY(-1px);
+}
+
+.mobile-mixup-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 } 
