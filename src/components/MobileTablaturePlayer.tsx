@@ -17,6 +17,7 @@ import NoteElement from './NoteElement';
 import * as Tone from 'tone';
 import { useSongSelection } from '../hooks/useSongSelection';
 import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
+import { SongListItem } from '../utils/songPopulator';
 
 // Helper function to format time as MM:SS
 const formatTime = (time: number) => {
@@ -27,7 +28,7 @@ const formatTime = (time: number) => {
 
 interface MobileTablaturePlayerProps {
   song: SongData;
-  songList: { id: string; name: string; filename: string; }[];
+  songList: SongListItem[];
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;

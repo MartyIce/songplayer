@@ -20,10 +20,11 @@ import { useSongProcessor } from '../hooks/useSongProcessor';
 import { useTransportControl } from '../hooks/useTransportControl';
 import { useSongSelection } from '../hooks/useSongSelection';
 import { usePlaybackLoop } from '../hooks/usePlaybackLoop';
+import { SongListItem } from '../utils/songPopulator';
 
 interface TablaturePlayerProps {
   song: SongData;
-  songList: { id: string; name: string; filename: string; }[];
+  songList: SongListItem[];
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;

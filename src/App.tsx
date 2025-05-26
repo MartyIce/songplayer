@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './App.css';
 import TablaturePlayer from './components/TablaturePlayer';
 import MobileTablaturePlayer from './components/MobileTablaturePlayer';
@@ -6,6 +6,7 @@ import { SongData } from './types/SongTypes';
 import { convertSongToStringFret } from './utils/noteConverter';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './utils/localStorage';
 import { ZoomProvider } from './contexts/ZoomContext';
+import { SongPopulator, SongListItem } from './utils/songPopulator';
 
 // Custom hook to detect mobile devices and orientation
 const useMobileDetection = () => {
@@ -43,7 +44,7 @@ const useMobileDetection = () => {
 };
 
 // Define available songs metadata
-const songList = [
+const baseSongList: SongListItem[] = [
   { id: 'deep-elem', name: 'Deep Elem Blues', filename: 'deep-elem-blues.json' },
   { id: 'roses', name: 'Give Me the Roses While I Live', filename: 'roses.json' },
   { id: 'giuliani-study-1', name: 'Giuliani Study No. 1', filename: 'giuliani-study-1.json' },
@@ -59,6 +60,11 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const { isMobile, isLandscape } = useMobileDetection();
 
+  // Generate the complete song list with generated songs
+  const songList = useMemo(() => {
+    return SongPopulator.populateSongList(baseSongList);
+  }, []);
+
   // Load initial song
   useEffect(() => {
     // Get the saved song ID from local storage, or use the first song as default
@@ -68,18 +74,35 @@ function App() {
     // Make sure the current song ID is saved correctly
     saveToStorage(STORAGE_KEYS.CURRENT_SONG, songToLoad.id);
     
-    loadSong(songToLoad.filename);
-  }, []);
+    loadSong(songToLoad);
+  }, [songList]);
 
-  const loadSong = async (filename: string) => {
+  const loadSong = async (songItem: SongListItem) => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`${process.env.PUBLIC_URL}/songs/${filename}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load song: ${response.statusText}`);
+      
+      // Skip separator items
+      if (songItem.name.startsWith('---')) {
+        setIsLoading(false);
+        return;
       }
-      const songData = await response.json();
+      
+      let songData: SongData;
+      
+      if (songItem.data) {
+        // Generated song - use the data directly
+        songData = songItem.data;
+      } else if (songItem.filename) {
+        // File-based song - load from file
+        const response = await fetch(`${process.env.PUBLIC_URL}/songs/${songItem.filename}`);
+        if (!response.ok) {
+          throw new Error(`Failed to load song: ${response.statusText}`);
+        }
+        songData = await response.json();
+      } else {
+        throw new Error('Invalid song item: no data or filename provided');
+      }
       
       // Convert the song if it's in note format (has tuning property)
       const processedSong = songData.tuning 
@@ -98,7 +121,7 @@ function App() {
   const handleSongChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedSong = songList.find(song => song.id === e.target.value);
     if (selectedSong) {
-      loadSong(selectedSong.filename);
+      loadSong(selectedSong);
       saveToStorage(STORAGE_KEYS.CURRENT_SONG, selectedSong.id);
     }
   };

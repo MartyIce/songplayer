@@ -3,6 +3,7 @@ import './Controls.css';
 import { GuitarType } from '../utils/GuitarSampler';
 import LoopPointAdjuster from './LoopPointAdjuster';
 import ZoomControls from './ZoomControls';
+import { SongListItem } from '../utils/songPopulator';
 
 interface ControlsProps {
   isPlaying: boolean;
@@ -28,7 +29,7 @@ interface ControlsProps {
   loopEnd: number;
   onLoopPointsChange: (start: number, end: number) => void;
   timeSignature: [number, number]; // [beats per measure, beat unit]
-  songList: { id: string; name: string }[];
+  songList: SongListItem[];
   currentSongId: string;
   onSongChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   isLoading: boolean;
@@ -255,16 +256,25 @@ const Controls: React.FC<ControlsProps> = ({
           </div>
 
           <div className="song-select">
-            <label htmlFor="song-select">Song:</label>
+            <label>Song:</label>
             <select 
-              id="song-select" 
+              id="song-select"
               onChange={onSongChange}
               value={currentSongId}
               disabled={isLoading}
               className="song-selector"
             >
               {songList.map(song => (
-                <option key={song.id} value={song.id}>
+                <option 
+                  key={song.id} 
+                  value={song.id}
+                  disabled={song.name.startsWith('---')}
+                  style={song.name.startsWith('---') ? { 
+                    fontWeight: 'bold', 
+                    color: '#ccc',
+                    backgroundColor: '#333'
+                  } : {}}
+                >
                   {song.name}
                 </option>
               ))}
