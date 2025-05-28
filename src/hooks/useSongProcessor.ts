@@ -24,7 +24,7 @@ export const useSongProcessor = ({
     }
     // If no tuning, it's already in string/fret format
     return [song, song];
-  }, [song.title]);
+  }, [song]);
 
   // Calculate the total duration of the song in beats
   const songDuration = useMemo(() => {

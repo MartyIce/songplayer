@@ -78,12 +78,14 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
     isMuted,
     nightMode,
     bpm,
+    fretSpan,
     handleBpmChange,
     handleGuitarTypeChange,
     handleChordsEnabledChange,
     handleChordsVolumeChange,
     handleMuteChange,
-    handleNightModeChange
+    handleNightModeChange,
+    handleFretSpanChange
   } = usePlayerSettings(song);
 
   // Initialize Tone.Transport
@@ -253,6 +255,9 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
       // Mix up the current song
       const mixedSong = SongPopulator.mixupSong(song);
       
+      // Calculate all positions for the mixed song
+      SongPopulator.calculateAllPositions(mixedSong, fretSpan);
+      
       // Update the song in the parent component
       onSongUpdate(mixedSong);
       
@@ -261,7 +266,51 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
         setShouldAutoRestart(true);
       }
     }
-  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop]);
+  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop, fretSpan]);
+
+  // Handle move up neck
+  const handleMoveUpNeck = useCallback(() => {
+    if (onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Move to the next higher position (positions should already be calculated)
+      const movedSong = SongPopulator.moveUpNeck(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(movedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [onSongUpdate, song, isPlaying, handleStop]);
+
+  // Handle move down neck
+  const handleMoveDownNeck = useCallback(() => {
+    if (onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Move to the next lower position (positions should already be calculated)
+      const movedSong = SongPopulator.moveDownNeck(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(movedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [onSongUpdate, song, isPlaying, handleStop]);
 
   // Auto-restart after song mixup
   useEffect(() => {
@@ -304,6 +353,13 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
       setTabViewHeight(height);
     }
   }, [containerRef]);
+
+  // Calculate positions when song changes (for generated songs)
+  useEffect(() => {
+    if (currentSongId.startsWith('generated-') && song) {
+      SongPopulator.calculateAllPositions(song, fretSpan);
+    }
+  }, [currentSongId, song, fretSpan]);
 
   return (
     <div className="mobile-tablature-player">
@@ -472,6 +528,17 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
                   />
                 </label>
               )}
+              <label>
+                Fret Span: {fretSpan} frets
+                <input
+                  type="range"
+                  min="3"
+                  max="6"
+                  step="1"
+                  value={fretSpan}
+                  onChange={(e) => handleFretSpanChange(parseInt(e.target.value))}
+                />
+              </label>
             </div>
 
             <div className="mobile-control-group">
@@ -501,12 +568,30 @@ const MobileTablaturePlayer: React.FC<MobileTablaturePlayerProps> = ({
               {isLoading && <div style={{ color: '#fff' }}>Loading...</div>}
               
               {onSongUpdate && currentSongId.startsWith('generated-') && (
-                <button 
-                  className="mobile-mixup-button"
-                  onClick={handleMixupSong}
-                >
-                  🎲 Mix Up Notes
-                </button>
+                <div className="mobile-song-controls">
+                  <button 
+                    className="mobile-mixup-button"
+                    onClick={handleMixupSong}
+                  >
+                    🎲 Mix Up Notes
+                  </button>
+                  <div className="mobile-neck-movement-controls">
+                    <button 
+                      className="mobile-neck-button mobile-neck-up"
+                      onClick={handleMoveUpNeck}
+                      title="Move notes up the neck"
+                    >
+                      ⬆️ Up Neck
+                    </button>
+                    <button 
+                      className="mobile-neck-button mobile-neck-down"
+                      onClick={handleMoveDownNeck}
+                      title="Move notes down the neck"
+                    >
+                      ⬇️ Down Neck
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>

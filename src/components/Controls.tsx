@@ -35,7 +35,11 @@ interface ControlsProps {
   isLoading: boolean;
   nightMode: boolean;
   onNightModeChange: (enabled: boolean) => void;
+  fretSpan: number;
+  onFretSpanChange: (span: number) => void;
   onMixupSong?: () => void; // Optional mixup function
+  onMoveUpNeck?: () => void; // Optional move up neck function
+  onMoveDownNeck?: () => void; // Optional move down neck function
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -68,7 +72,11 @@ const Controls: React.FC<ControlsProps> = ({
   isLoading,
   nightMode,
   onNightModeChange,
+  fretSpan,
+  onFretSpanChange,
   onMixupSong,
+  onMoveUpNeck,
+  onMoveDownNeck,
 }) => {
   // Add state for temporary input values
   const [tempTimeStart, setTempTimeStart] = useState<string>('');
@@ -292,6 +300,29 @@ const Controls: React.FC<ControlsProps> = ({
                 🎲 Mix Up Notes
               </button>
             )}
+            
+            {(onMoveUpNeck || onMoveDownNeck) && (
+              <div className="neck-movement-controls">
+                {onMoveUpNeck && (
+                  <button 
+                    className="neck-button neck-up-button"
+                    onClick={onMoveUpNeck}
+                    title="Move notes up the neck (lower frets)"
+                  >
+                    ↑ Up Neck
+                  </button>
+                )}
+                {onMoveDownNeck && (
+                  <button 
+                    className="neck-button neck-down-button"
+                    onClick={onMoveDownNeck}
+                    title="Move notes down the neck (higher frets)"
+                  >
+                    ↓ Down Neck
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -357,6 +388,20 @@ const Controls: React.FC<ControlsProps> = ({
             />
             <span>Night Mode</span>
           </label>
+
+          <div className="fret-span-control">
+            <label>Fret Span: {fretSpan} frets</label>
+            <input
+              type="range"
+              min="3"
+              max="6"
+              step="1"
+              value={fretSpan}
+              onChange={(e) => onFretSpanChange(parseInt(e.target.value))}
+              style={getSliderStyle(fretSpan, 3, 6)}
+              title="Maximum fret span for neck positions (3-6 frets)"
+            />
+          </div>
 
           <div className="control-separator" />
           <ZoomControls />

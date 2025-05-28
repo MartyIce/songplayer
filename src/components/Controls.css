@@ -599,4 +599,112 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.neck-movement-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.neck-button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.neck-up-button {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.neck-up-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.neck-down-button {
+  background: linear-gradient(135deg, #FF9800, #f57c00);
+}
+
+.neck-down-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f57c00, #ef6c00);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.neck-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.neck-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fret-span-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.fret-span-control label {
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.fret-span-control input[type="range"] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.fret-span-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ff9800;
+  cursor: pointer;
+  margin-top: -6px;
+}
+
+.fret-span-control input[type="range"]::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ff9800;
+  cursor: pointer;
+  border: none;
+}
+
+.fret-span-control input[type="range"]::-ms-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #ff9800;
+  cursor: pointer;
 } 

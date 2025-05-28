@@ -417,4 +417,56 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.mobile-song-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mobile-neck-movement-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.mobile-neck-button {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  color: #000;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.mobile-neck-up {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+}
+
+.mobile-neck-up:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-1px);
+}
+
+.mobile-neck-down {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.mobile-neck-down:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f57c00, #ef6c00);
+  transform: translateY(-1px);
+}
+
+.mobile-neck-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mobile-neck-button:active:not(:disabled) {
+  transform: translateY(1px);
 } 

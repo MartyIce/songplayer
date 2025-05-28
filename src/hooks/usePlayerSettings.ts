@@ -13,6 +13,7 @@ export const usePlayerSettings = (song: SongData) => {
   const [chordsVolume, setChordsVolume] = useState(() => getFromStorage(STORAGE_KEYS.CHORDS_VOLUME, 0.7));
   const [isMuted, setIsMuted] = useState(() => getFromStorage(STORAGE_KEYS.MUTE, false));
   const [nightMode, setNightMode] = useState(() => getFromStorage(STORAGE_KEYS.NIGHT_MODE, false));
+  const [fretSpan, setFretSpan] = useState(() => getFromStorage(STORAGE_KEYS.FRET_SPAN, 4));
 
   // Settings handlers
   const handleBpmChange = useCallback((newBpm: number) => {
@@ -47,6 +48,11 @@ export const usePlayerSettings = (song: SongData) => {
     saveToStorage(STORAGE_KEYS.NIGHT_MODE, enabled);
   }, []);
 
+  const handleFretSpanChange = useCallback((span: number) => {
+    setFretSpan(span);
+    saveToStorage(STORAGE_KEYS.FRET_SPAN, span);
+  }, []);
+
   return {
     // Settings state
     bpm,
@@ -55,6 +61,7 @@ export const usePlayerSettings = (song: SongData) => {
     chordsVolume,
     isMuted,
     nightMode,
+    fretSpan,
 
     // Settings handlers
     handleBpmChange,
@@ -63,5 +70,6 @@ export const usePlayerSettings = (song: SongData) => {
     handleChordsVolumeChange,
     handleMuteChange,
     handleNightModeChange,
+    handleFretSpanChange,
   };
 }; 

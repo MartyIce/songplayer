@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   ZOOM_LEVEL: 'zoomLevel',
   CHORDS_ENABLED: 'chordsEnabled',
   CHORDS_VOLUME: 'chordsVolume',
+  FRET_SPAN: 'fretSpan',
 } as const;
 
 // Save a value to local storage

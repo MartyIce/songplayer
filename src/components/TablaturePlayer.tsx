@@ -72,12 +72,14 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
     chordsVolume,
     isMuted,
     nightMode,
+    fretSpan,
     handleBpmChange,
     handleGuitarTypeChange,
     handleChordsEnabledChange,
     handleChordsVolumeChange,
     handleMuteChange,
-    handleNightModeChange
+    handleNightModeChange,
+    handleFretSpanChange
   } = usePlayerSettings(song);
   
   // Refs
@@ -318,6 +320,9 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
       // Mix up the current song
       const mixedSong = SongPopulator.mixupSong(song);
       
+      // Calculate all positions for the mixed song
+      SongPopulator.calculateAllPositions(mixedSong, fretSpan);
+      
       // Update the song in the parent component
       onSongUpdate(mixedSong);
       
@@ -326,7 +331,58 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         setShouldAutoRestart(true);
       }
     }
-  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop]);
+  }, [currentSongId, onSongUpdate, song, isPlaying, handleStop, fretSpan]);
+
+  // Handle move up neck
+  const handleMoveUpNeck = useCallback(() => {
+    if (onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Move to the next higher position (positions should already be calculated)
+      const movedSong = SongPopulator.moveUpNeck(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(movedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [onSongUpdate, song, isPlaying, handleStop]);
+
+  // Handle move down neck
+  const handleMoveDownNeck = useCallback(() => {
+    if (onSongUpdate) {
+      // Store whether the song was playing
+      const wasPlaying = isPlaying;
+      
+      // Always stop playback first
+      handleStop();
+      
+      // Move to the next lower position (positions should already be calculated)
+      const movedSong = SongPopulator.moveDownNeck(song);
+      
+      // Update the song in the parent component
+      onSongUpdate(movedSong);
+      
+      // Set flag to auto-restart if it was playing
+      if (wasPlaying) {
+        setShouldAutoRestart(true);
+      }
+    }
+  }, [onSongUpdate, song, isPlaying, handleStop]);
+
+  // Calculate positions when song changes (for generated songs)
+  useEffect(() => {
+    if (currentSongId.startsWith('generated-') && song) {
+      SongPopulator.calculateAllPositions(song, fretSpan);
+    }
+  }, [currentSongId, song, fretSpan]);
 
   return (
     <div className="tablature-player" ref={containerRef}>
@@ -360,7 +416,11 @@ const TablaturePlayer: React.FC<TablaturePlayerProps> = ({
         isLoading={isLoading}
         nightMode={nightMode}
         onNightModeChange={handleNightModeChange}
+        fretSpan={fretSpan}
+        onFretSpanChange={handleFretSpanChange}
         onMixupSong={handleMixupSong}
+        onMoveUpNeck={handleMoveUpNeck}
+        onMoveDownNeck={handleMoveDownNeck}
       />
       
       <VexStaffDisplay
